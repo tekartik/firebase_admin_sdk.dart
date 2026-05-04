@@ -105,6 +105,13 @@ class _ExpressHttpResponseAdminSdk implements ExpressHttpResponse {
 
   @override
   Future<void> send([Object? body]) async {
+    if (body != null) {
+      if (body is Uint8List) {
+      } else if (body is String) {
+      } else {
+        body = jsonEncode(body);
+      }
+    }
     response = fn.Response(statusCode, body: body);
   }
 
