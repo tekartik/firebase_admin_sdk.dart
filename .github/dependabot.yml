@@ -1,0 +1,23 @@
+# Dependabot configuration file.
+# See https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+version: 2
+
+enable-beta-ecosystems: true
+
+updates:
+  - package-ecosystem: "pub"
+    directory: "firebase_admin_sdk"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "pub"
+    directory: "firebase_admin_sdk_test"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "pub"
+    directory: "firebase_functions_admin_sdk"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

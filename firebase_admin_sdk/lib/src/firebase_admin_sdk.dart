@@ -91,6 +91,16 @@ extension FirebaseAdminSdkExtension on FirebaseAdminSdk {
   }
 }
 
+/// Mixin
+extension TekartikFirebaseMixinAdminSdkExtension on FirebaseAdminSdk {
+  _TekartikFirebaseAdminSdk get _impl => this as _TekartikFirebaseAdminSdk;
+
+  /// From raw app
+  FirebaseApp fromNativeApp(sdk.FirebaseApp rawApp) {
+    return _impl._fromRawAppSdk(rawApp);
+  }
+}
+
 class _TekartikFirebaseAdminSdk
     with FirebaseWithAppsMixin, FirebaseAdminMixin, FirebaseMixin
     implements
