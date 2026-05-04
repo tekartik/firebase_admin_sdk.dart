@@ -1,0 +1,17 @@
+name: _
+publish_to: none
+environment:
+  sdk: ^3.9.0
+workspace:
+  - firebase_admin_sdk
+  - firebase_functions_admin_sdk
+  - firebase_admin_sdk_test
+dependencies:
+  tekartik_firebase_firestore_test:
+    git:
+      url: https://github.com/tekartik/firebase_firestore.dart
+      path: firestore_test
+  tekartik_firebase_test:
+    git:
+      url: https://github.com/tekartik/firebase.dart
+      path: firebase_test
