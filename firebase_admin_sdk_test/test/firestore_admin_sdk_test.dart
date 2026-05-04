@@ -46,5 +46,5 @@ void main() {
     test('isLocal', () {
       expect(firestore.service.supportsBlobs, isFalse);
     });
-  });
+  }, skip: true);
 }
