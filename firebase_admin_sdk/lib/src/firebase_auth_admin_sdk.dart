@@ -1,0 +1,134 @@
+import 'package:firebase_admin_sdk/auth.dart' as admin_sdk;
+import 'package:firebase_admin_sdk/auth.dart' as sdk;
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart' as admin_sdk;
+import 'package:tekartik_firebase/firebase_mixin.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:tekartik_firebase_auth/auth.dart';
+import 'package:tekartik_firebase_auth/src/auth_mixin.dart'; // ignore: implementation_imports
+
+/// Auth service for admin sdk.
+abstract class FirebaseAuthServiceAdminSdk implements AuthService {}
+
+/// Auth service implementation for Admin SDK.
+class _FirebaseAuthServiceAdminSdk
+    with FirebaseProductServiceMixin<FirebaseAuth>, AuthServiceMixin
+    implements FirebaseAuthServiceAdminSdk {
+  @override
+  Auth auth(App app) {
+    return getInstance(app, () {
+      assert(app is FirebaseAppAdminSdk, 'invalid firebase app type');
+      var adminApp = app as FirebaseAppAdminSdk;
+      var sdkApp =
+          (adminApp as dynamic).nativeInstance as admin_sdk.FirebaseApp;
+      return AuthAdminSdk(this, adminApp, sdkApp.auth());
+    });
+  }
+
+  @override
+  bool get supportsCurrentUser => false;
+
+  @override
+  bool get supportsListUsers => true;
+}
+
+FirebaseAuthServiceAdminSdk? _authServiceAdminSdk;
+
+/// The auth service for admin sdk.
+FirebaseAuthServiceAdminSdk get firebaseAuthServiceAdminSdk =>
+    _authServiceAdminSdk ??= _FirebaseAuthServiceAdminSdk();
+
+/// Auth Admin SDK.
+abstract class FirebaseAuthAdminSdk implements Auth {}
+
+/// Auth implementation for Admin SDK.
+class AuthAdminSdk
+    with FirebaseAppProductMixin<FirebaseAuth>, FirebaseAuthMixin
+    implements FirebaseAuthAdminSdk {
+  @override
+  final FirebaseAuthServiceAdminSdk service;
+
+  /// admin sdk app
+  final FirebaseAppAdminSdk appAdminSdk;
+
+  /// Native instance
+  final admin_sdk.Auth nativeInstance;
+
+  /// Constructor
+  AuthAdminSdk(this.service, this.appAdminSdk, this.nativeInstance);
+
+  @override
+  App get app => appAdminSdk;
+
+  @override
+  Future<ListUsersResult> listUsers({
+    int? maxResults,
+    String? pageToken,
+  }) async {
+    var nativeResult = await nativeInstance.listUsers(
+      maxResults: maxResults,
+      pageToken: pageToken,
+    );
+    return ListUsersResult(
+      pageToken: nativeResult.pageToken,
+      users: nativeResult.users.map((user) {
+        return _UserRecordAdminSdk(user);
+      }).toList(),
+    );
+  }
+
+  @override
+  Future<User> reloadCurrentUser() => throw UnsupportedError(
+    'reloadCurrentUser not supported for admin sdk yet',
+  );
+}
+
+class _UserRecordAdminSdk
+    with FirebaseUserRecordDefaultMixin
+    implements UserRecord {
+  final sdk.UserRecord nativeUserRecord;
+
+  _UserRecordAdminSdk(this.nativeUserRecord);
+
+  @override
+  String? get email => nativeUserRecord.email;
+
+  @override
+  String get uid => nativeUserRecord.uid;
+
+  @override
+  Object? get customClaims => nativeUserRecord.customClaims;
+
+  @override
+  bool get disabled => nativeUserRecord.disabled;
+
+  @override
+  String? get displayName => nativeUserRecord.displayName;
+
+  @override
+  bool get emailVerified => nativeUserRecord.emailVerified;
+
+  @override
+  bool get isAnonymous => nativeUserRecord.email?.trim().isEmpty ?? true;
+
+  //  @override
+  //  UserMetadata? get metadata => nativeUserRecord.metadata;
+
+  @override
+  String? get passwordHash => nativeUserRecord.passwordHash;
+
+  @override
+  String? get passwordSalt => nativeUserRecord.passwordSalt;
+
+  @override
+  String? get phoneNumber => nativeUserRecord.phoneNumber;
+
+  @override
+  String? get photoURL => nativeUserRecord.photoUrl;
+
+  //  @override
+  //  List<UserInfo>? get providerData => nativeUserRecord.providerData;
+
+  @override
+  String? get tokensValidAfterTime =>
+      nativeUserRecord.tokensValidAfterTime?.toIso8601String();
+}
