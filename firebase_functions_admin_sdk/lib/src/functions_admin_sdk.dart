@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -32,7 +33,7 @@ abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {}
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsAdminSdkRunner =
-    Future<void> Function(FirebaseFunctionsAdminSdk functions);
+    FutureOr<void> Function(FirebaseFunctionsAdminSdk functions);
 
 class _FirebaseFunctionsServiceAdminSdk
     with
@@ -51,12 +52,12 @@ class _FirebaseFunctionsServiceAdminSdk
     List<String> args,
     TekartikFirebaseFunctionsAdminSdkRunner runner,
   ) async {
-    await fn.fireUp(args, (rawFunctions) async {
+    await fn.fireUp(args, (rawFunctions) {
       var ff = _FirebaseFunctionsAdminSdk(
         service: this,
         rawFunctions: rawFunctions,
       );
-      await runner.call(ff);
+      return runner.call(ff);
     });
   }
 }

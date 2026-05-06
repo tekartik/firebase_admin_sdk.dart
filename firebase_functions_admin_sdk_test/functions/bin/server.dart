@@ -1,0 +1,14 @@
+import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+
+void main(List<String> args) {
+  var service = firebaseFunctionsServiceAdminSdk;
+  service.fireUp(args, (functions) {
+    // https://firebase.google.com/docs/functions/http-events
+    functions.registerFunction(
+      'hello-world',
+      functions.https.onRequest((request) async {
+        await request.response.send('Hello 4 from Dart Functions!');
+      }, httpsOptions: HttpsOptions(cors: true)),
+    );
+  });
+}
