@@ -173,6 +173,7 @@ class _FirebaseFunctionsAdminSdk
 
   @override
   void registerFunction(String name, FirebaseFunction function) {
+    print('registering $name');
     var functionAdminSdk = function as FirebaseFunctionAdminSdk;
     functionAdminSdk.register(name);
   }
