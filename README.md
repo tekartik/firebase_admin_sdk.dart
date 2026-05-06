@@ -1,13 +1,3 @@
-# tekartik_firebase_functions_admin_sdk_test
+# firebase_admin_sdk.dart
 
-Firebase for Cloud admin sdk
-
-## Setup
-
-In `pubspec.yaml`:
-```yaml
-  tekartik_firebase_functions_admin_sdk_test:
-    git:
-      url: https://github.com/tekartik/firebase_admin_sdk.dart
-      path: firebase_functions_admin_sdk_test
-```
+Tekartik Firebase implementation on top of firebase_admin_sdk
