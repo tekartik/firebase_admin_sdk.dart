@@ -6,7 +6,9 @@ import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/json_utils.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/mixin_admin_sdk.dart';
+//import 'package:tekartik_firebase_auth/src/auth.dart';
 import 'package:tekartik_firebase_functions/firebase_functions.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.dart';
 
@@ -59,6 +61,62 @@ class _FirebaseFunctionsServiceAdminSdk
   }
 }
 
+class _CallContextDecodedIdToken implements DecodedIdToken {
+  @override
+  final String uid;
+
+  _CallContextDecodedIdToken({required this.uid});
+}
+
+class _CallContextAuthAdminSdk implements CallContextAuth {
+  @override
+  final _CallContextDecodedIdToken? token;
+
+  _CallContextAuthAdminSdk({required this.token});
+
+  @override
+  String? get uid => token?.uid;
+}
+
+class _CallContextAdminSdk implements CallContext {
+  @override
+  final _CallContextAuthAdminSdk? auth;
+
+  _CallContextAdminSdk({required this.auth});
+}
+
+class _CallRequestAdminSdk implements CallRequest {
+  final fn.CallableRequest<Object?> request;
+  final fn.CallableResponse<Object?> response;
+
+  _CallRequestAdminSdk(this.request, this.response);
+  @override
+  late final context = () {
+    var uid = request.instanceIdToken;
+    _CallContextAuthAdminSdk? auth;
+    if (uid != null) {
+      auth = _CallContextAuthAdminSdk(
+        token: _CallContextDecodedIdToken(uid: uid),
+      );
+    }
+    var context = _CallContextAdminSdk(auth: auth);
+    return context;
+  }();
+
+  @override
+  Object? get data => request.data;
+
+  @override
+  // TODO: implement text
+  String? get text {
+    var data = this.data;
+    if (data == null) {
+      return null;
+    }
+    return jsonEncode(data);
+  }
+}
+
 class _ExpressHttpRequestAdminSdk implements ExpressHttpRequest {
   final fn.Request _rawRequest;
 
@@ -89,6 +147,8 @@ class _ExpressHttpRequestAdminSdk implements ExpressHttpRequest {
 
   late final _response = _ExpressHttpResponseAdminSdk();
 
+  /// exposed for caller
+  fn.Response get fnResponse => _response.response;
   @override
   ExpressHttpResponse get response => _response;
 
@@ -105,19 +165,23 @@ class _ExpressHttpResponseAdminSdk implements ExpressHttpResponse {
 
   @override
   Future<void> send([Object? body]) async {
-    if (body != null) {
-      if (body is Uint8List) {
-      } else if (body is String) {
-      } else {
-        body = jsonEncode(body);
+    var finalBody = body;
+    if (finalBody != null) {
+      if (finalBody is! Uint8List && finalBody is! String) {
+        finalBody = jsonEncode(finalBody);
       }
     }
-    response = fn.Response(statusCode, body: body);
+    response = fn.Response(
+      statusCode,
+      body: finalBody,
+      headers: headers.toMap().cast(),
+    );
   }
 
   @override
   Future redirect(Uri location, {int? status = 302}) async {
     statusCode = status ?? 302;
+    // headers.set(HttpHeaders.locationHeader, location.toString());
   }
 
   @override
@@ -125,7 +189,7 @@ class _ExpressHttpResponseAdminSdk implements ExpressHttpResponse {
 
   @override
   Future<void> close() async {
-    response = fn.Response(statusCode);
+    response = fn.Response(statusCode, headers: headers.toMap().cast());
   }
 
   @override
@@ -173,16 +237,39 @@ class _FirebaseFunctionsAdminSdk
 
   @override
   void registerFunction(String name, FirebaseFunction function) {
-    print('registering $name');
     var functionAdminSdk = function as FirebaseFunctionAdminSdk;
     functionAdminSdk.register(name);
   }
+
+  @override
+  late final params = _ParamsAdminSdk(
+    projectId: rawFunctions.adminApp.projectId!,
+  );
+}
+
+class _ParamsAdminSdk implements Params {
+  @override
+  final String projectId;
+
+  _ParamsAdminSdk({required this.projectId});
 }
 
 class _HttpsAdminSdk with HttpsFunctionsDefaultMixin implements HttpsFunctions {
   final _FirebaseFunctionsAdminSdk _functions;
 
   _HttpsAdminSdk(this._functions);
+
+  @override
+  HttpsCallableFunction onCall(
+    CallHandler handler, {
+    HttpsCallableOptions? callableOptions,
+  }) {
+    return _HttpsCallableFunctionAdminSdk(
+      httpsAdminSdk: this,
+      handler: handler,
+      callableOptions: callableOptions,
+    );
+  }
 
   @override
   HttpsFunction onRequest(
@@ -201,10 +288,51 @@ class _HttpsAdminSdk with HttpsFunctionsDefaultMixin implements HttpsFunctions {
 abstract class HttpsFunctionAdminSdk
     implements FirebaseFunctionAdminSdk, HttpsFunction {}
 
+/// Admin SDK Https callable function.
+abstract class HttpsCallableFunctionAdminSdk
+    implements FirebaseFunctionAdminSdk, HttpsCallableFunction {}
+
 /// Firebase functions common
 abstract class FirebaseFunctionAdminSdk implements FirebaseFunction {
   /// register
   void register(String name);
+}
+
+class _HttpsCallableFunctionAdminSdk implements HttpsCallableFunctionAdminSdk {
+  final _HttpsAdminSdk httpsAdminSdk;
+  final CallHandler handler;
+  final HttpsCallableOptions? callableOptions;
+
+  _HttpsCallableFunctionAdminSdk({
+    required this.httpsAdminSdk,
+    required this.handler,
+    required this.callableOptions,
+  });
+
+  @override
+  void register(String name) {
+    httpsAdminSdk._functions.rawFunctions.https.onCall<Object>(
+      (request, response) async {
+        var callRequest = _CallRequestAdminSdk(request, response);
+        var result = await handler.call(callRequest);
+        return fn.CallableResult<Object>(result as Object);
+      },
+      // ignore: non_const_argument_for_const_parameter
+      name: name,
+      // ignore: non_const_argument_for_const_parameter
+      options: _wrapCallableOptions(callableOptions),
+    );
+  }
+
+  fn.CallableOptions? _wrapCallableOptions(
+    HttpsCallableOptions? callableOptions,
+  ) {
+    if (callableOptions == null) {
+      return null;
+    }
+    var cors = (callableOptions.cors == true) ? const fn.Cors(['*']) : null;
+    return fn.CallableOptions(cors: cors);
+  }
 }
 
 class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
