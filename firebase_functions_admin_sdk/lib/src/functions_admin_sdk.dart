@@ -22,10 +22,7 @@ typedef HttpOptionsAdminSdk = fn.HttpsOptions;
 abstract class FirebaseFunctionsServiceAdminSdk
     implements FirebaseFunctionsService {
   /// Starts the Firebase Functions runtime.
-  Future<void> fireUp(
-    List<String> args,
-    TekartikFirebaseFunctionsAdminSdkRunner runner,
-  );
+  Future<void> fireUp(TekartikFirebaseFunctionsAdminSdkRunner runner);
 }
 
 /// Admin SDK Firebase Functions instance.
@@ -48,11 +45,8 @@ class _FirebaseFunctionsServiceAdminSdk
   }
 
   @override
-  Future<void> fireUp(
-    List<String> args,
-    TekartikFirebaseFunctionsAdminSdkRunner runner,
-  ) async {
-    await fn.fireUp(args, (rawFunctions) {
+  Future<void> fireUp(TekartikFirebaseFunctionsAdminSdkRunner runner) async {
+    await fn.runFunctions((rawFunctions) {
       var ff = _FirebaseFunctionsAdminSdk(
         service: this,
         rawFunctions: rawFunctions,
