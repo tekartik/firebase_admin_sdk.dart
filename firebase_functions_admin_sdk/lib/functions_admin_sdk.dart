@@ -6,9 +6,10 @@ export 'src/functions_admin_sdk.dart'
         firebaseFunctionsServiceAdminSdk,
         FirebaseFunctionsServiceAdminSdk,
         FirebaseFunctionsAdminSdk,
-        FirebaseAdminSdkHttpsOptions,
-        FirebaseAdminSdkRegion,
-        FirebaseAdminSdkSupportedRegion,
-        FirebaseAdminSdkCors,
-        FirebaseAdminSdkInstances,
-        FirebaseAdminSdkTimeoutSeconds;
+        FirebaseFunctionsAdminSdkHttpsOptions,
+        FirebaseFunctionsAdminSdkRegion,
+        FirebaseFunctionsAdminSdkSupportedRegion,
+        FirebaseFunctionsAdminSdkCors,
+        FirebaseFunctionsAdminSdkInstances,
+        FirebaseFunctionsAdminSdkTimeoutSeconds,
+        FirebaseFunctionsAdminSdkResponse;

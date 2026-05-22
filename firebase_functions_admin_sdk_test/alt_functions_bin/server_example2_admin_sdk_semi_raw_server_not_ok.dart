@@ -9,15 +9,15 @@ void main(List<String> args) {
       (request) async {
         await request.response.send('Hello admin-sdk from Dart Functions!');
       },
-      httpsOptions: const FirebaseAdminSdkHttpsOptions(
-        cors: FirebaseAdminSdkCors(['*']),
+      httpsOptions: const FirebaseFunctionsAdminSdkHttpsOptions(
+        cors: FirebaseFunctionsAdminSdkCors(['*']),
         // Set maxInstances to control costs during unexpected traffic spikes.
         // https://firebase.google.com/docs/functions/manage-functions#min-max-instances
-        maxInstances: FirebaseAdminSdkInstances(17),
-        region: FirebaseAdminSdkRegion(
-          FirebaseAdminSdkSupportedRegion.europeWest1,
+        maxInstances: FirebaseFunctionsAdminSdkInstances(17),
+        region: FirebaseFunctionsAdminSdkRegion(
+          FirebaseFunctionsAdminSdkSupportedRegion.europeWest1,
         ),
-        timeoutSeconds: FirebaseAdminSdkTimeoutSeconds(46),
+        timeoutSeconds: FirebaseFunctionsAdminSdkTimeoutSeconds(46),
       ),
     );
   });

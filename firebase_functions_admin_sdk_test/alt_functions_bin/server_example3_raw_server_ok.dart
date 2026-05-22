@@ -9,10 +9,11 @@ void main(List<String> args) {
         cors: Cors(['*']),
         // Set maxInstances to control costs during unexpected traffic spikes.
         // https://firebase.google.com/docs/functions/manage-functions#min-max-instances
-        maxInstances: Instances(10),
+        maxInstances: Instances(11),
         region: Region(SupportedRegion.europeWest1),
+        timeoutSeconds: TimeoutSeconds(19),
       ),
-      (request) async => Response(200, body: 'Hello 2 from Dart Functions!'),
+      (request) async => Response(200, body: 'Hello raw3 from Dart Functions!'),
     );
   });
 }

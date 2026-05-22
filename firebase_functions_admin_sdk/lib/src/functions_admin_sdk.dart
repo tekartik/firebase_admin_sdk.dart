@@ -30,7 +30,7 @@ abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
   HttpsFunctionsAdminSdk get https;
 
   /// Native access
-  FirebaseAdminSdkHttpsNamespace get httpsAdminSdk;
+  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;
 
   /// Register a function
   void registerAdminSdkFunction(
@@ -48,7 +48,7 @@ abstract class HttpsFunctionsAdminSdk implements HttpsFunctions {
     @mustBeConst String name,
     RequestHandler handler, {
     // ignore: experimental_member_use
-    @mustBeConst FirebaseAdminSdkHttpsOptions? httpsOptions,
+    @mustBeConst FirebaseFunctionsAdminSdkHttpsOptions? httpsOptions,
   });
 }
 
@@ -281,7 +281,8 @@ class _FirebaseFunctionsAdminSdk
   );
 
   @override
-  FirebaseAdminSdkHttpsNamespace get httpsAdminSdk => rawFunctions.https;
+  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk =>
+      rawFunctions.https;
 }
 
 class _ParamsAdminSdk implements Params {
@@ -329,9 +330,9 @@ class _HttpsAdminSdk
     @mustBeConst String name,
     RequestHandler handler, {
     // ignore: experimental_member_use
-    @mustBeConst FirebaseAdminSdkHttpsOptions? httpsOptions,
+    @mustBeConst FirebaseFunctionsAdminSdkHttpsOptions? httpsOptions,
   }) {
-    _functions.rawFunctions.https.onRequest(
+    _functions.httpsAdminSdk.onRequest(
       (request) async {
         var express = _ExpressHttpRequestAdminSdk(request);
         await express.ready;
@@ -416,7 +417,7 @@ class _HttpsCallableFunctionAdminSdk implements HttpsCallableFunctionAdminSdk {
 class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
   final _HttpsAdminSdk httpsAdminSdk;
   final RequestHandler handler;
-  final FirebaseAdminSdkHttpsOptions? fnHttpsOptions;
+  final FirebaseFunctionsAdminSdkHttpsOptions? fnHttpsOptions;
   final HttpsOptions? httpsOptions;
 
   _HttpsFunctionAdminSdk({
@@ -530,22 +531,25 @@ final FirebaseFunctionsServiceAdminSdk firebaseFunctionsServiceAdminSdk =
 final _firebaseFunctionsServiceAdminSdk = _FirebaseFunctionsServiceAdminSdk();
 
 /// Native Https options
-typedef FirebaseAdminSdkHttpsOptions = fn.HttpsOptions;
+typedef FirebaseFunctionsAdminSdkHttpsOptions = fn.HttpsOptions;
 
 /// Native Region
-typedef FirebaseAdminSdkRegion = fn.Region;
+typedef FirebaseFunctionsAdminSdkRegion = fn.Region;
 
 /// Native SupportedRegion
-typedef FirebaseAdminSdkSupportedRegion = fn.SupportedRegion;
+typedef FirebaseFunctionsAdminSdkSupportedRegion = fn.SupportedRegion;
 
 /// Native Cors
-typedef FirebaseAdminSdkCors = fn.Cors;
+typedef FirebaseFunctionsAdminSdkCors = fn.Cors;
 
 /// Native Instance
-typedef FirebaseAdminSdkInstances = fn.Instances;
+typedef FirebaseFunctionsAdminSdkInstances = fn.Instances;
 
 /// Native https namespace
-typedef FirebaseAdminSdkHttpsNamespace = fn.HttpsNamespace;
+typedef FirebaseFunctionsAdminSdkHttpsNamespace = fn.HttpsNamespace;
 
 /// Native TimeoutSeconds
-typedef FirebaseAdminSdkTimeoutSeconds = fn.TimeoutSeconds;
+typedef FirebaseFunctionsAdminSdkTimeoutSeconds = fn.TimeoutSeconds;
+
+/// Native response
+typedef FirebaseFunctionsAdminSdkResponse = fn.Response;

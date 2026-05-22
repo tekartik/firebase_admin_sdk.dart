@@ -36,6 +36,24 @@ Future<void> main(List<String> args) async {
   await firebaseFunctionsMenuMain(args);
 }
 
+/// Delete generate and dump functions.yaml
+Future<void> deleteGenerateAndDumpFunctions() async {
+  var file = File(join('functions', 'functions.yaml'));
+  if (file.existsSync()) {
+    stdout.writeln('#< before');
+    var content = await file.readAsString();
+    stdout.writeln(content);
+    stdout.writeln('#> before');
+    await file.delete();
+  }
+  var shell = Shell();
+  await shell.run('firebase emulators:exec --only functions "exit 0"');
+  stdout.writeln('#< after');
+  var content = await file.readAsString();
+  stdout.writeln(content);
+  stdout.writeln('#> after');
+}
+
 /// Main menu
 Future<void> firebaseFunctionsMenuMain(List<String> args) async {
   var app = App(path: '.');
