@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:dev_build/shell.dart';
+import 'package:path/path.dart';
 import 'package:tekartik_app_dev_menu/dev_menu.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 
@@ -30,8 +33,29 @@ class App {
 }
 
 Future<void> main(List<String> args) async {
+  await firebaseFunctionsMenuMain(args);
+}
+
+/// Main menu
+Future<void> firebaseFunctionsMenuMain(List<String> args) async {
   var app = App(path: '.');
   await mainMenuUniversal(args, () {
+    var file = File(join('functions', 'functions.yaml'));
+    item('delete functions.yaml', () async {
+      // Force re-generation of functions.yaml
+
+      if (file.existsSync()) {
+        await file.delete();
+      }
+    });
+    item('generate functions.yaml', () async {
+      var shell = Shell();
+      await shell.run('firebase emulators:exec --only functions "exit 0"');
+    });
+    item('Dump functions.yaml', () async {
+      var content = await file.readAsString();
+      write(content);
+    });
     item('emulator is supported', () async {
       write('isSupported: ${await app.isEmulatorSupported()}');
     });

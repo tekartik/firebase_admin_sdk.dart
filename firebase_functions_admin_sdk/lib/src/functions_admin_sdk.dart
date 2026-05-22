@@ -1,10 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:firebase_functions/firebase_functions.dart' as fn;
 import 'package:tekartik_common_utils/byte_utils.dart';
-import 'package:tekartik_common_utils/json_utils.dart';
+import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
@@ -22,11 +20,37 @@ typedef HttpOptionsAdminSdk = fn.HttpsOptions;
 abstract class FirebaseFunctionsServiceAdminSdk
     implements FirebaseFunctionsService {
   /// Starts the Firebase Functions runtime.
+  @override
   Future<void> fireUp(TekartikFirebaseFunctionsAdminSdkRunner runner);
 }
 
 /// Admin SDK Firebase Functions instance.
-abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {}
+abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
+  @override
+  HttpsFunctionsAdminSdk get https;
+
+  /// Native access
+  FirebaseAdminSdkHttpsNamespace get httpsAdminSdk;
+
+  /// Register a function
+  void registerAdminSdkFunction(
+    // ignore: experimental_member_use
+    @mustBeConst String name,
+    FirebaseFunctionAdminSdk function,
+  );
+}
+
+/// Admin SDK Https functions.
+abstract class HttpsFunctionsAdminSdk implements HttpsFunctions {
+  /// Creates an HTTPS callable function (untyped data).
+  void onAdminSdkRequest(
+    // ignore: experimental_member_use
+    @mustBeConst String name,
+    RequestHandler handler, {
+    // ignore: experimental_member_use
+    @mustBeConst FirebaseAdminSdkHttpsOptions? httpsOptions,
+  });
+}
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsAdminSdkRunner =
@@ -222,24 +246,42 @@ class _FirebaseFunctionsAdminSdk
   late final app = firebaseAdminSdk.fromNativeApp(rawFunctions.adminApp);
 
   @override
-  late final HttpsFunctions https = _HttpsAdminSdk(this);
+  late final HttpsFunctionsAdminSdk https = _HttpsAdminSdk(this);
 
   /// register a function
   @override
   void operator []=(String key, FirebaseFunction function) {
+    // ignore: non_const_argument_for_const_parameter
     registerFunction(key, function);
   }
 
   @override
-  void registerFunction(String name, FirebaseFunction function) {
+  void registerFunction(
+    // ignore: experimental_member_use
+    @mustBeConst String name,
+    FirebaseFunction function,
+  ) {
     var functionAdminSdk = function as FirebaseFunctionAdminSdk;
-    functionAdminSdk.register(name);
+    // ignore: non_const_argument_for_const_parameter
+    registerAdminSdkFunction(name, functionAdminSdk);
+  }
+
+  @override
+  void registerAdminSdkFunction(
+    // ignore: experimental_member_use
+    @mustBeConst String name,
+    FirebaseFunctionAdminSdk function,
+  ) {
+    function.register(name);
   }
 
   @override
   late final params = _ParamsAdminSdk(
     projectId: rawFunctions.adminApp.projectId!,
   );
+
+  @override
+  FirebaseAdminSdkHttpsNamespace get httpsAdminSdk => rawFunctions.https;
 }
 
 class _ParamsAdminSdk implements Params {
@@ -249,7 +291,9 @@ class _ParamsAdminSdk implements Params {
   _ParamsAdminSdk({required this.projectId});
 }
 
-class _HttpsAdminSdk with HttpsFunctionsDefaultMixin implements HttpsFunctions {
+class _HttpsAdminSdk
+    with HttpsFunctionsDefaultMixin
+    implements HttpsFunctionsAdminSdk {
   final _FirebaseFunctionsAdminSdk _functions;
 
   _HttpsAdminSdk(this._functions);
@@ -275,8 +319,41 @@ class _HttpsAdminSdk with HttpsFunctionsDefaultMixin implements HttpsFunctions {
       httpsAdminSdk: this,
       handler: handler,
       httpsOptions: httpsOptions,
+      fnHttpsOptions: null,
     );
   }
+
+  @override
+  void onAdminSdkRequest(
+    // ignore: experimental_member_use
+    @mustBeConst String name,
+    RequestHandler handler, {
+    // ignore: experimental_member_use
+    @mustBeConst FirebaseAdminSdkHttpsOptions? httpsOptions,
+  }) {
+    _functions.rawFunctions.https.onRequest(
+      (request) async {
+        var express = _ExpressHttpRequestAdminSdk(request);
+        await express.ready;
+        await handler.call(express);
+        return express._response.response;
+      },
+      // ignore: non_const_argument_for_const_parameter
+      name: name, // Name mapping logic would go here
+      // ignore: non_const_argument_for_const_parameter
+      options: httpsOptions,
+    );
+  }
+
+  /*
+    var function = _HttpsFunctionAdminSdk(
+      httpsAdminSdk: this,
+      handler: handler,
+      httpsOptions: null,
+      fnHttpsOptions: httpsOptions,
+    );
+    function.register(name);
+  }*/
 }
 
 /// Admin SDK Https function.
@@ -325,20 +402,29 @@ class _HttpsCallableFunctionAdminSdk implements HttpsCallableFunctionAdminSdk {
     if (callableOptions == null) {
       return null;
     }
-    var cors = (callableOptions.cors == true) ? const fn.Cors(['*']) : null;
-    return fn.CallableOptions(cors: cors);
+    var globalOptions = wrapGlobalOptions(callableOptions);
+    var fnCors = wrapCors(callableOptions.cors);
+    return fn.CallableOptions(
+      cors: fnCors,
+      region: globalOptions.region,
+      maxInstances: globalOptions.maxInstances,
+      timeoutSeconds: globalOptions.timeoutSeconds,
+    );
   }
 }
 
 class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
   final _HttpsAdminSdk httpsAdminSdk;
   final RequestHandler handler;
+  final FirebaseAdminSdkHttpsOptions? fnHttpsOptions;
   final HttpsOptions? httpsOptions;
 
   _HttpsFunctionAdminSdk({
     required this.httpsAdminSdk,
     required this.handler,
     required this.httpsOptions,
+    // ignore: experimental_member_use
+    @mustBeConst required this.fnHttpsOptions,
   });
 
   @override
@@ -353,7 +439,7 @@ class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
       // ignore: non_const_argument_for_const_parameter
       name: name, // Name mapping logic would go here
       // ignore: non_const_argument_for_const_parameter
-      options: _wrapHttpsOptions(httpsOptions),
+      options: fnHttpsOptions ?? _wrapHttpsOptions(httpsOptions),
     );
   }
 
@@ -361,14 +447,80 @@ class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
     if (httpsOptions == null) {
       return null;
     }
-    var cors = (httpsOptions.cors == true) ? const fn.Cors(['*']) : null;
-    //var region = fireUp
-    //region: fireUpRegionBelgium,
+    var globalOptions = wrapGlobalOptions(httpsOptions);
+    var fnCors = wrapCors(httpsOptions.cors);
     // Set maxInstances to control costs during unexpected traffic spikes.
     // https://firebase.google.com/docs/functions/manage-functions#min-max-instances
 
-    return fn.HttpsOptions(cors: cors);
+    var fnRegion = wrapRegion(httpsOptions.region);
+    var fnMaxInstances = wrapInstances(httpsOptions.maxInstances);
+    var fnTimeoutSeconds = wrapTimeoutSeconds(httpsOptions.timeoutSeconds);
+    // ignore: avoid_print
+    print(
+      'maxInstances: ${fnMaxInstances?.value()}, region: ${fnRegion?.value()}, timeoutSeconds: ${fnTimeoutSeconds?.value()}',
+    );
+    var options = fn.HttpsOptions(
+      cors: fnCors,
+      region: globalOptions.region,
+      maxInstances: globalOptions.maxInstances,
+      timeoutSeconds: globalOptions.timeoutSeconds,
+    );
+    return options;
   }
+}
+
+/// Wrap the region as a string to a supported region
+fn.Region? wrapRegion(String? region) {
+  if (region == null) {
+    return null;
+  }
+  var fnRegion = fn.Region(
+    fn.SupportedRegion.values.firstWhere(
+      (r) => r.value == region,
+      orElse: () => throw ArgumentError('Unsupported region: $region'),
+    ),
+  );
+  return fnRegion;
+}
+
+//fn.GlobalOptsion
+/// Wrap instances
+fn.Instances? wrapInstances(int? count) {
+  if (count == null) {
+    return null;
+  }
+  return fn.Instances(count);
+}
+
+/// Wrap global options
+fn.GlobalOptions wrapGlobalOptions(GlobalOptions options) {
+  var fnRegion = wrapRegion(options.region);
+  var fnMaxInstances = wrapInstances(options.maxInstances);
+  var fnTimeoutSeconds = wrapTimeoutSeconds(options.timeoutSeconds);
+  return fn.GlobalOptions(
+    region: fnRegion,
+    maxInstances: fnMaxInstances,
+    timeoutSeconds: fnTimeoutSeconds,
+  );
+}
+
+/// Wrap cors
+fn.Cors? wrapCors(bool? cors) {
+  if (cors == null) {
+    return null;
+  }
+  if (cors) {
+    return const fn.Cors(['*']);
+  }
+  return null;
+}
+
+/// Wrap timeout
+fn.TimeoutSeconds? wrapTimeoutSeconds(int? seconds) {
+  if (seconds == null) {
+    return null;
+  }
+  return fn.TimeoutSeconds(seconds);
 }
 
 /// Global Admin SDK functions service.
@@ -376,3 +528,24 @@ final FirebaseFunctionsServiceAdminSdk firebaseFunctionsServiceAdminSdk =
     _firebaseFunctionsServiceAdminSdk;
 
 final _firebaseFunctionsServiceAdminSdk = _FirebaseFunctionsServiceAdminSdk();
+
+/// Native Https options
+typedef FirebaseAdminSdkHttpsOptions = fn.HttpsOptions;
+
+/// Native Region
+typedef FirebaseAdminSdkRegion = fn.Region;
+
+/// Native SupportedRegion
+typedef FirebaseAdminSdkSupportedRegion = fn.SupportedRegion;
+
+/// Native Cors
+typedef FirebaseAdminSdkCors = fn.Cors;
+
+/// Native Instance
+typedef FirebaseAdminSdkInstances = fn.Instances;
+
+/// Native https namespace
+typedef FirebaseAdminSdkHttpsNamespace = fn.HttpsNamespace;
+
+/// Native TimeoutSeconds
+typedef FirebaseAdminSdkTimeoutSeconds = fn.TimeoutSeconds;
