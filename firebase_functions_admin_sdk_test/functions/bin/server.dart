@@ -1,22 +1,21 @@
-import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+import 'package:firebase_functions/firebase_functions.dart';
 
 void main(List<String> args) {
-  FirebaseFunctionsService service = firebaseFunctionsServiceAdminSdk;
-  service.fireUp((functions) {
+  runFunctions((firebase) async {
+    // Simulate some async initialization work
+    await Future<void>.delayed(const Duration(seconds: 1));
     // https://firebase.google.com/docs/functions/http-events
-    functions.registerFunction(
-      'hello-world',
-      functions.https.onRequest(
-        (request) async {
-          await request.response.send('Hello common from Dart Functions!');
-        },
-        httpsOptions: HttpsOptions(
-          cors: true,
-          region: regionBelgium,
-          maxInstances: 15,
-          timeoutSeconds: 45,
-        ),
+    firebase.https.onRequest(
+      name: 'hello-world',
+      options: const HttpsOptions(
+        cors: Cors(['*']),
+        region: Region(SupportedRegion.europeWest1),
+        timeoutSeconds: TimeoutSeconds(10),
+        // Set maxInstances to control costs during unexpected traffic spikes.
+        // https://firebase.google.com/docs/functions/manage-functions#min-max-instances
+        maxInstances: Instances(11),
       ),
+      (request) async => Response(200, body: 'Hello from Dart Functions!'),
     );
   });
 }

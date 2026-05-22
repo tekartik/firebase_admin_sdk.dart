@@ -1,16 +1,13 @@
 import 'package:firebase_functions/firebase_functions.dart';
 
-int _runFunctionsCount = 0;
 void main(List<String> args) {
   runFunctions((firebase) async {
-    print('runFunctionsCount: ${++_runFunctionsCount}');
     // Simulate some async initialization work
     await Future<void>.delayed(const Duration(seconds: 1));
     // https://firebase.google.com/docs/functions/http-events
     firebase.https.onRequest(
       name: 'hello-world',
-      // ignore: non_const_argument_for_const_parameter
-      options: HttpsOptions(
+      options: const HttpsOptions(
         cors: Cors(['*']),
         region: Region(SupportedRegion.europeWest1),
         timeoutSeconds: TimeoutSeconds(10),
