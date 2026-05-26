@@ -1,7 +1,7 @@
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 
 void main(List<String> args) {
-  FirebaseFunctionsService service = firebaseFunctionsServiceAdminSdk;
+  final service = firebaseFunctionsServiceAdminSdk;
   service.fireUp((functions) {
     // https://firebase.google.com/docs/functions/http-events
     functions.registerFunction(

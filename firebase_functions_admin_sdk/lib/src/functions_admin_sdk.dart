@@ -13,6 +13,10 @@ import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.d
 
 import 'import_http.dart';
 
+/// Callback type for the Admin SDK function registration.
+typedef TekartikFirebaseFunctionsFireUpRunner =
+    FutureOr<void> Function(FirebaseFunctions functions);
+
 /// Admin SDK specific HTTPS options.
 typedef HttpOptionsAdminSdk = fn.HttpsOptions;
 
@@ -20,7 +24,6 @@ typedef HttpOptionsAdminSdk = fn.HttpsOptions;
 abstract class FirebaseFunctionsServiceAdminSdk
     implements FirebaseFunctionsService {
   /// Starts the Firebase Functions runtime.
-  @override
   Future<void> fireUp(TekartikFirebaseFunctionsAdminSdkRunner runner);
 }
 

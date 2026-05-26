@@ -12,4 +12,5 @@ export 'src/functions_admin_sdk.dart'
         FirebaseFunctionsAdminSdkCors,
         FirebaseFunctionsAdminSdkInstances,
         FirebaseFunctionsAdminSdkTimeoutSeconds,
-        FirebaseFunctionsAdminSdkResponse;
+        FirebaseFunctionsAdminSdkResponse,
+        TekartikFirebaseFunctionsFireUpRunner;
