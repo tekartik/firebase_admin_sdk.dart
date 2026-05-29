@@ -137,7 +137,7 @@ class FirestoreAdminSdk
       return sdk.VectorValue(value.toArray());
     }
 
-    throw 'not supported $value type ${value.runtimeType}';
+    throw UnsupportedError('not supported $value type ${value.runtimeType}');
   }
 
   Object? _unwrapValue(Object? nativeValue) {
@@ -174,7 +174,9 @@ class FirestoreAdminSdk
       // Compat
       return Timestamp.fromDateTime(nativeValue);
     } else {
-      throw 'not supported $nativeValue type ${nativeValue.runtimeType}';
+      throw UnsupportedError(
+        'not supported $nativeValue type ${nativeValue.runtimeType}',
+      );
     }
   }
 

@@ -21,7 +21,7 @@ dependencies:
     git:
       url: https://github.com/tekartik/firebase_admin_sdk.dart
       path: firebase_functions_admin_sdk
-  dev_build: ">=1.1.7"
+  dev_build: ">=1.1.7+3"
   firebase_functions:
 dev_dependencies:
   lints: ">=6.1.0"
