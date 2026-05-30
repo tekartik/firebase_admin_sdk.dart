@@ -8,6 +8,10 @@ import 'package:http/http.dart';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/emulator_test_context.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/functions.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test.dart';
+import 'package:tekartik_firebase_functions_call/functions_call.dart';
 import 'package:test/test.dart';
 
 /*
@@ -44,35 +48,16 @@ Future main() async {
     await file.delete();
   }
   final fbProjectId = await _emulatorService.getProjectId();
+
+  var testContext = FirebaseFunctionsAdminSdkEmulatorTestContext(
+    region: regionBelgium,
+    emulatorOptions: FirebaseEmulatorOptions(
+      onlyFunctions: true,
+      projectId: fbProjectId,
+      debug: false,
+    ),
+  );
   group('firebase_functions_dart', () {
-    late FirebaseEmulator emulator;
-
-    var baseUrl = 'http://localhost:5001/$fbProjectId/$defaultRegion';
-    setUpAll(() async {
-      var emulatorService = FirebaseEmulatorService(path: '.');
-      emulator = await emulatorService.start(
-        options: FirebaseEmulatorOptions(
-          onlyFunctions: true,
-          projectId: fbProjectId,
-          debug: false,
-        ),
-      );
-      // ✔  functions[us-central1-helloworldgcfdartv1]: http function initialized (http://127.0.0.1:5001/tekartik-eu-dev/us-central1/helloworldgcfdartv1).
-      // ✔  functions[us-central1-prvinfogcfdartv1]: http function initialized (http://127.0.0.1:5001/tekartik-eu-dev/us-central1/prvinfogcfdartv1).
-      // ✔  functions[us-central1-dartv1echo]: http function initialized (http://127.0.0.1:5001/tekartik-eu-dev/us-central1/dartv1echo).
-      //                                                                  http://localhost:5001/tekartik-eu-dev/us-central1/echo
-    });
-
-    /// Most basic
-    test('hello-world', () async {
-      var result = await read(Uri.parse(url.join(baseUrl, 'hello-world')));
-      // ignore: avoid_print
-      print('helloWorld: $result');
-      expect(result, contains('Hello'));
-    });
-
-    tearDownAll(() async {
-      await emulator.stop();
-    });
+    functionsHttpGroup(testContext);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

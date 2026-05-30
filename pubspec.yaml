@@ -10,12 +10,4 @@ workspace:
   - firebase_functions_admin_sdk_raw_test
   - firebase_functions_admin_sdk_test/functions
   - firebase_functions_admin_sdk_raw_test/functions
-dependencies:
-  tekartik_firebase_firestore_test:
-    git:
-      url: https://github.com/tekartik/firebase_firestore.dart
-      path: firestore_test
-  tekartik_firebase_test:
-    git:
-      url: https://github.com/tekartik/firebase.dart
-      path: firebase_test
+  - firebase_functions_admin_sdk_http

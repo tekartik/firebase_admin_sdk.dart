@@ -29,11 +29,12 @@ abstract class FirebaseFunctionsServiceAdminSdk
 
 /// Admin SDK Firebase Functions instance.
 abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
+  /*
   @override
   HttpsFunctionsAdminSdk get https;
 
   /// Native access
-  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;
+  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;*/
 
   /// Register a function
   void registerAdminSdkFunction(
@@ -41,6 +42,28 @@ abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
     @mustBeConst String name,
     FirebaseFunctionAdminSdk function,
   );
+}
+
+/// Request handler
+typedef FirebaseFunctionsAdminSdkRequestHandler =
+    FutureOr<fn.Response> Function(
+      FirebaseFunctionsAdminSdk firebaseFunctions,
+      fn.Request request,
+    );
+
+/// Extension on native implementation
+extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
+  Future<fn.Response> Function(fn.Request request) httpsHandler(
+    FirebaseFunctionsAdminSdkRequestHandler handler,
+  ) {
+    return (request) async {
+      var ff = _FirebaseFunctionsAdminSdk(
+        service: firebaseFunctionsServiceAdminSdk._impl,
+        rawFunctions: this,
+      );
+      return await handler.call(ff, request);
+    };
+  }
 }
 
 /// Admin SDK Https functions.
@@ -229,6 +252,16 @@ class _ExpressHttpResponseAdminSdk implements ExpressHttpResponse {
   }
 }
 
+extension on FirebaseFunctionsAdminSdk {
+  // ignore: unused_element
+  _FirebaseFunctionsAdminSdk get _impl => this as _FirebaseFunctionsAdminSdk;
+}
+
+extension on FirebaseFunctionsServiceAdminSdk {
+  _FirebaseFunctionsServiceAdminSdk get _impl =>
+      this as _FirebaseFunctionsServiceAdminSdk;
+}
+
 class _FirebaseFunctionsAdminSdk
     with
         FirebaseAppProductMixin<FirebaseFunctions>,
@@ -283,7 +316,6 @@ class _FirebaseFunctionsAdminSdk
     projectId: rawFunctions.adminApp.projectId!,
   );
 
-  @override
   FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk =>
       rawFunctions.https;
 }

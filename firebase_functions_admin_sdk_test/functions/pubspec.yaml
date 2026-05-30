@@ -12,6 +12,10 @@ dependencies:
     git:
       url: https://github.com/tekartik/firebase_admin_sdk.dart
       path: firebase_functions_admin_sdk
+  tekartik_firebase_functions_admin_sdk_test:
+    git:
+      url: https://github.com/tekartik/firebase_admin_sdk.dart
+      path: firebase_functions_admin_sdk_test
 
 dev_dependencies:
   build_runner: ">=2.15.0"

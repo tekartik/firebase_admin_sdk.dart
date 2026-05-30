@@ -8,7 +8,7 @@ import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:test/test.dart';
 
-var defaultRegion = regionBelgium;
+var defaultRegion = 'europe-west1';
 var _emulatorService = FirebaseEmulatorService(path: '.');
 Future main() async {
   if (await _emulatorService.isSupported()) {
