@@ -1,5 +1,6 @@
 import 'package:cv/cv_json.dart';
 import 'package:dev_test/dev_test.dart';
+import 'package:path/path.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_http/http.dart';
 
@@ -56,16 +57,37 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     // ignore: avoid_print
     print(map.cvToJsonPretty());
 
-    expect(map['requestedUri'], endsWith('/admin-sdk-https-v1/?info=true'));
-    map.remove('requestedUri');
+    expect(map['requestedUri'], endsWith('/?info=true'));
+    expect(map['url'], endsWith('?info=true')); // deployed has en empty url
+    map
+      ..remove('requestedUri')
+      ..remove('url');
     expect(map, {
-      'url': 'admin-sdk-https-v1/?info=true',
       'method': 'GET',
       'contentLength': 0,
       'protocolVersion': '1.1',
     });
+    // ignore: dead_code
+    if (false) {
+      uri = context.httpsUri(url.join(testFunctionHttpsV1, 'sub')).withInfo();
+      result = await httpClientRead(client, httpMethodGet, uri);
+      map = result.jsonToMap();
+      // {
+      //   "url": "admin-sdk-https-v1/?info=true",
+      //   "requestedUri": "http://localhost:5001/admin-sdk-https-v1/?info=true",
+      //   "method": "GET",
+      //   "protocolVersion": "1.1"
+      // }
+      // ignore: avoid_print
+      print(map.cvToJsonPretty());
 
-    result = await httpClientRead(client, httpMethodGet, uri, body: 'test');
+      expect(map['requestedUri'], endsWith('/sub?info=true'));
+      expect(
+        map['url'],
+        endsWith('sub?info=true'),
+      ); // deployed has en empty url
+    }
+    result = await httpClientRead(client, httpMethodPost, uri, body: 'test');
     map = result.jsonToMap();
 
     // ignore: avoid_print
@@ -76,7 +98,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
 
     result = await httpClientRead(
       client,
-      httpMethodGet,
+      httpMethodPost,
       uri,
       body: [0xC0, 0x80],
     );
@@ -89,7 +111,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
 
     result = await httpClientRead(
       client,
-      httpMethodGet,
+      httpMethodPost,
       uri,
       body: [0xC0, 0x80],
       headers: (HttpHeaders()..mimeType = httpContentTypeBytes).toStringMap(),
