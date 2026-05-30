@@ -34,14 +34,14 @@ abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
   HttpsFunctionsAdminSdk get https;
 
   /// Native access
-  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;*/
+  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;
 
   /// Register a function
   void registerAdminSdkFunction(
     // ignore: experimental_member_use
     @mustBeConst String name,
     FirebaseFunctionAdminSdk function,
-  );
+  );*/
 }
 
 /// Request handler
@@ -53,6 +53,7 @@ typedef FirebaseFunctionsAdminSdkRequestHandler =
 
 /// Extension on native implementation
 extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
+  /// Https handler.
   Future<fn.Response> Function(fn.Request request) httpsHandler(
     FirebaseFunctionsAdminSdkRequestHandler handler,
   ) {
@@ -289,26 +290,6 @@ class _FirebaseFunctionsAdminSdk
   void operator []=(String key, FirebaseFunction function) {
     // ignore: non_const_argument_for_const_parameter
     registerFunction(key, function);
-  }
-
-  @override
-  void registerFunction(
-    // ignore: experimental_member_use
-    @mustBeConst String name,
-    FirebaseFunction function,
-  ) {
-    var functionAdminSdk = function as FirebaseFunctionAdminSdk;
-    // ignore: non_const_argument_for_const_parameter
-    registerAdminSdkFunction(name, functionAdminSdk);
-  }
-
-  @override
-  void registerAdminSdkFunction(
-    // ignore: experimental_member_use
-    @mustBeConst String name,
-    FirebaseFunctionAdminSdk function,
-  ) {
-    function.register(name);
   }
 
   @override

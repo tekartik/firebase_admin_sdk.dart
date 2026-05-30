@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:http/http.dart';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
-import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:test/test.dart';
 
 var defaultRegion = 'europe-west1';

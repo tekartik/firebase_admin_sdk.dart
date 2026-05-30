@@ -1,15 +1,25 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:firebase_functions/firebase_functions.dart';
-import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+import 'package:cv/cv_json.dart';
 import 'package:tekartik_common_utils/bool_utils.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
-import 'package:cv/cv_json.dart';
+import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
 import 'package:tekartik_http/http_client.dart';
 
+/// https function
 const testFunctionHttpsV1 = 'admin-sdk-https-v1';
 
+/// Declares the HTTP runner for admin SDK test functions.
+void declareRunner(FirebaseFunctionsAdminSdkHttp functions) {
+  functions.https.onAdminSdkRequest(
+    testFunctionHttpsV1,
+    functionsHttpV1Handler,
+  );
+}
+
+/// Handler for the test functions.
 Future<Response> functionsHttpV1Handler(
   FirebaseFunctionsAdminSdk firebaseFunctions,
   Request request,
@@ -43,12 +53,12 @@ Future<Response> functionsHttpV1Handler(
         'body': ?body,
         'bodyBytes': ?bodyBytes,
         'mimeType': ?mimeType,
-        'contentLength': ?contentLength,
+        'contentLength': contentLength ?? 0,
         'protocolVersion': request.protocolVersion,
       }.cvToJson(),
     );
   }
-  print(request.url);
-  print(request.requestedUri);
+  //print(request.url);
+  //print(request.requestedUri);
   return Response.ok('Hello');
 }

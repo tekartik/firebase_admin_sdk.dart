@@ -1,16 +1,15 @@
-import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
-import 'package:dev_test/dev_test.dart';
-import 'package:http/http.dart';
-import 'package:tekartik_http/common/http_headers_memory.dart';
-import 'package:tekartik_http/http.dart';
-import 'package:tekartik_http/http.dart';
-import 'functions.dart';
 import 'package:cv/cv_json.dart';
+import 'package:dev_test/dev_test.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
+import 'package:tekartik_http/http.dart';
+
+import 'functions.dart';
 
 extension on Uri {
   Uri withInfo() => replace(queryParameters: {'info': 'true'});
 }
 
+/// Test group for functions HTTP.
 void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
   late Client client;
   setUpAll(() async {
@@ -56,11 +55,13 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     // }
     // ignore: avoid_print
     print(map.cvToJsonPretty());
+
     expect(map['requestedUri'], endsWith('/admin-sdk-https-v1/?info=true'));
     map.remove('requestedUri');
     expect(map, {
       'url': 'admin-sdk-https-v1/?info=true',
       'method': 'GET',
+      'contentLength': 0,
       'protocolVersion': '1.1',
     });
 

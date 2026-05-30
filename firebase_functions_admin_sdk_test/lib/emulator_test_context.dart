@@ -1,14 +1,18 @@
 import 'dart:async';
 
-import 'package:http/src/client.dart';
+import 'package:http/http.dart';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_firebase_functions_call/functions_call.dart';
 
+/// Emulator test context for Firebase Functions Admin SDK.
 class FirebaseFunctionsAdminSdkEmulatorTestContext
     implements FirebaseFunctionsAdminSdkTestContext {
+  /// Firebase emulator options.
   final FirebaseEmulatorOptions emulatorOptions;
+
+  /// Region for the functions.
   final String? region;
 
   var _refCount = 0;
@@ -16,6 +20,8 @@ class FirebaseFunctionsAdminSdkEmulatorTestContext
 
   late final _baseUrl =
       'http://localhost:5001/${emulatorOptions.projectId}/${region ?? regionUsCentral1}';
+
+  /// Creates an emulator test context.
   FirebaseFunctionsAdminSdkEmulatorTestContext({
     required this.emulatorOptions,
     this.region,
