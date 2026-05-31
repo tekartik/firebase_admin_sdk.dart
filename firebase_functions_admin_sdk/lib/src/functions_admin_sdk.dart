@@ -51,6 +51,14 @@ typedef FirebaseFunctionsAdminSdkRequestHandler =
       fn.Request request,
     );
 
+/// Call handler
+typedef FirebaseFunctionsAdminSdkCallHandler<T extends Object> =
+    Future<fn.CallableResult<T>> Function(
+      FirebaseFunctionsAdminSdk firebaseFunctions,
+      fn.CallableRequest<Object?> request,
+      fn.CallableResponse<T> response,
+    );
+
 /// Extension on native implementation
 extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
   /// Https handler.
@@ -63,6 +71,23 @@ extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
         rawFunctions: this,
       );
       return await handler.call(ff, request);
+    };
+  }
+
+  /// Call handler.
+  Future<fn.CallableResult<T>> Function(
+    fn.CallableRequest<Object?> request,
+    fn.CallableResponse<T> response,
+  )
+  callHandler<T extends Object>(
+    FirebaseFunctionsAdminSdkCallHandler<T> handler,
+  ) {
+    return (request, response) async {
+      var ff = _FirebaseFunctionsAdminSdk(
+        service: firebaseFunctionsServiceAdminSdk._impl,
+        rawFunctions: this,
+      );
+      return await handler.call(ff, request, response);
     };
   }
 }

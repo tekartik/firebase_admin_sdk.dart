@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:path/path.dart';
@@ -50,6 +51,12 @@ abstract class HttpsFunctionsAdminSdkHttp implements HttpsFunctions {
     String name,
     FirebaseFunctionsAdminSdkRequestHandler handler,
   );
+
+  /// Registers an Admin SDK request handler.
+  void onAdminSdkCall<T extends Object>(
+    String name,
+    FirebaseFunctionsAdminSdkCallHandler<T> handler,
+  );
 }
 
 class _FirebaseFunctionsAdminSdkHttp
@@ -58,17 +65,22 @@ class _FirebaseFunctionsAdminSdkHttp
         FirebaseAppProductMixin<FirebaseFunctions>
     implements FirebaseFunctionsAdminSdkHttp {
   final HttpServerFactory httpServerFactory;
+
   @override
   final FirebaseFunctionsServiceAdminSdkHttp service;
+
+  @override
+  final FirebaseApp app;
+
   _FirebaseFunctionsAdminSdkHttp({
     required this.service,
-    required FirebaseApp app,
+    required this.app,
     required this.httpServerFactory,
   });
 
   @override
   late HttpServer httpServer;
-  final _functions = <String, _HttpsFunction>{};
+  final _functions = <String, _HttpsBase>{};
 
   @override
   late final HttpsFunctionsAdminSdkHttp https = _HttpsFunctionsAdminSdkHttp(
@@ -141,6 +153,37 @@ class _FirebaseFunctionsAdminSdkHttp
                   request.response.add(bodyBytes);
                 }
                 await request.response.close();
+              } else if (function is _HttpsCall) {
+                var body = await httpStreamGetBytes(request);
+                var json = jsonDecode(utf8.decode(body)) as Map;
+                var data = json['data'];
+
+                var callableRequest = CallableRequest(
+                  Request(
+                    request.method,
+                    request.requestedUri,
+                    headers: request.headers.toMap(),
+                  ),
+                  data,
+                  null,
+                );
+                var callableResponse = CallableResponse<Object>(
+                  acceptsStreaming: false,
+                );
+
+                var result = await function.handler(
+                  this,
+                  callableRequest,
+                  callableResponse,
+                );
+
+                request.response.statusCode = 200;
+                request.response.headers.set(
+                  'Content-Type',
+                  'application/json; charset=utf-8',
+                );
+                request.response.write(jsonEncode({'result': result.data}));
+                await request.response.close();
               }
               /*
             if (function is HttpsFunctionHttp) {
@@ -193,11 +236,22 @@ class _FirebaseFunctionsAdminSdkHttp
   }
 }
 
-class _HttpsFunction {
+abstract class _HttpsBase {
   final String name;
+
+  _HttpsBase({required this.name});
+}
+
+class _HttpsFunction extends _HttpsBase {
   final FirebaseFunctionsAdminSdkRequestHandler handler;
 
-  _HttpsFunction({required this.name, required this.handler});
+  _HttpsFunction({required super.name, required this.handler});
+}
+
+class _HttpsCall extends _HttpsBase {
+  final FirebaseFunctionsAdminSdkCallHandler<Object> handler;
+
+  _HttpsCall({required super.name, required this.handler});
 }
 
 class _HttpsFunctionsAdminSdkHttp
@@ -206,12 +260,30 @@ class _HttpsFunctionsAdminSdkHttp
   final _FirebaseFunctionsAdminSdkHttp functions;
 
   _HttpsFunctionsAdminSdkHttp({required this.functions});
+
   @override
   void onAdminSdkRequest(
     String name,
     FirebaseFunctionsAdminSdkRequestHandler handler,
   ) {
     functions._functions[name] = _HttpsFunction(name: name, handler: handler);
+  }
+
+  @override
+  void onAdminSdkCall<T extends Object>(
+    String name,
+    FirebaseFunctionsAdminSdkCallHandler<T> handler,
+  ) {
+    functions._functions[name] = _HttpsCall(
+      name: name,
+      handler: (ff, request, response) async {
+        var typedResponse = CallableResponse<T>(
+          acceptsStreaming: response.acceptsStreaming,
+          heartbeatSeconds: response.heartbeatSeconds,
+        );
+        return await handler(ff, request, typedResponse);
+      },
+    );
   }
 }
 

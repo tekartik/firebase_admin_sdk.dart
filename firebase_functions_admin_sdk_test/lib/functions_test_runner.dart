@@ -10,6 +10,64 @@ extension on Uri {
   Uri withInfo() => replace(queryParameters: {'info': 'true'});
 }
 
+/// Test group fpr functions Call
+void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
+  late Client client;
+  setUpAll(() async {
+    await context.setUpAll();
+    client = context.client;
+  });
+
+  test('hello', () async {
+    var uri = context.httpsUri(testDartFunctionCallV1);
+    var response = await httpClientSend(
+      client,
+      httpMethodPost,
+      uri,
+      headers: (HttpHeaders()..mimeType = httpContentTypeJson).toStringMap(),
+
+      /// 'data' field required
+      body: {
+        'data': {'test': 'Hello'},
+      }.cvToJson(),
+    );
+    var result = response.body;
+    // print('response header: ${response.headers.cvToJsonPretty()}');
+    // header: {
+    //   "connection": "keep-alive",
+    //   "x-powered-by": "Dart with package:shelf",
+    //   "access-control-allow-headers": "*",
+    //   "keep-alive": "timeout=5",
+    //   "date": "Sun, 31 May 2026 14:40:54 GMT",
+    //   "access-control-allow-origin": "*",
+    //   "access-control-allow-methods": "*",
+    //   "content-length": "36",
+    //   "content-type": "application/json",
+    //   "x-frame-options": "SAMEORIGIN",
+    //   "x-xss-protection": "1; mode=block",
+    //   "x-content-type-options": "nosniff"
+    // }
+    expect(response.statusCode, 200);
+
+    var map = result.jsonToMap();
+    // {
+    //   "url": "admin-sdk-https-v1/?info=true",
+    //   "requestedUri": "http://localhost:5001/admin-sdk-https-v1/?info=true",
+    //   "method": "GET",
+    //   "protocolVersion": "1.1"
+    // }
+    // ignore: avoid_print
+    print(map.cvToJsonPretty());
+
+    // result enclosed
+    expect(map, {
+      'result': {
+        'data': {'test': 'Hello'},
+      },
+    });
+  });
+}
+
 /// Test group for functions HTTP.
 void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
   late Client client;
@@ -20,7 +78,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
 
   /// Most basic
   test('hello', () async {
-    var uri = context.httpsUri(testFunctionHttpsV1);
+    var uri = context.httpsUri(testDartFunctionHttpsV1);
     var result = await httpClientRead(client, httpMethodGet, uri);
     // ignore: avoid_print
     print('helloWorld: $result');
@@ -45,7 +103,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     expect(response.headers['content-length'], '5');
   });
   test('?info', () async {
-    var uri = context.httpsUri(testFunctionHttpsV1).withInfo();
+    var uri = context.httpsUri(testDartFunctionHttpsV1).withInfo();
     var result = await httpClientRead(client, httpMethodGet, uri);
     var map = result.jsonToMap();
     // {
@@ -69,7 +127,9 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     });
     // ignore: dead_code
     if (false) {
-      uri = context.httpsUri(url.join(testFunctionHttpsV1, 'sub')).withInfo();
+      uri = context
+          .httpsUri(url.join(testDartFunctionHttpsV1, 'sub'))
+          .withInfo();
       result = await httpClientRead(client, httpMethodGet, uri);
       map = result.jsonToMap();
       // {

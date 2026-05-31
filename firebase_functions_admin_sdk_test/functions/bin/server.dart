@@ -5,7 +5,8 @@ void main(List<String> args) {
   runFunctions((firebase) {
     // https://firebase.google.com/docs/functions/http-events
     firebase.https.onRequest(
-      name: testFunctionHttpsV1,
+      firebase.httpsHandler(functionsHttpV1Handler),
+      name: testDartFunctionHttpsV1,
       options: const HttpsOptions(
         cors: Cors(['*']),
         // Set maxInstances to control costs during unexpected traffic spikes.
@@ -14,7 +15,14 @@ void main(List<String> args) {
         region: Region(SupportedRegion.europeWest1),
         timeoutSeconds: TimeoutSeconds(19),
       ),
-      firebase.httpsHandler(functionsHttpV1Handler),
+    );
+    firebase.https.onCall(
+      firebase.callHandler(functionsCallV1Handler),
+      name: testDartFunctionCallV1,
+      options: const CallableOptions(
+        cors: Cors(['*']),
+        region: Region(SupportedRegion.europeWest1),
+      ),
     );
   });
 }

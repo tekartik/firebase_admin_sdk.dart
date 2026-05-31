@@ -7,4 +7,5 @@ export 'src/functions_admin_sdk.dart'
         FirebaseFunctionsServiceAdminSdk,
         FirebaseFunctionsAdminSdk,
         FirebaseFunctionsAdminSdkFirebaseExt,
-        FirebaseFunctionsAdminSdkRequestHandler;
+        FirebaseFunctionsAdminSdkRequestHandler,
+        FirebaseFunctionsAdminSdkCallHandler;

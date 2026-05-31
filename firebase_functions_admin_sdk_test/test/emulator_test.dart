@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/emulator_test_context.dart';
-import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test_runner.dart';
 import 'package:tekartik_firebase_functions_call/functions_call.dart';
 import 'package:test/test.dart';
 
@@ -34,6 +34,17 @@ Future main() async {
     ),
   );
   group('firebase_functions_dart', () {
-    functionsHttpGroup(testContext);
+    setUpAll(() async {
+      await testContext.setUpAll();
+    });
+    tearDownAll(() async {
+      await testContext.tearDownAll();
+    });
+    group('https', () {
+      functionsHttpGroup(testContext);
+    });
+    group('call', () {
+      functionsCallGroup(testContext);
+    });
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

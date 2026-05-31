@@ -1,5 +1,5 @@
 import 'package:tekartik_firebase_functions_admin_sdk_test/functions.dart';
-import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test_runner.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/http_test_context.dart';
 import 'package:tekartik_firebase_local/firebase_local.dart';
 import 'package:tekartik_http/http_memory.dart';
@@ -14,6 +14,17 @@ Future main() async {
     httpFactory: httpFactory,
   );
   group('firebase_functions_dart', () {
-    functionsHttpGroup(testContext);
+    setUpAll(() async {
+      await testContext.setUpAll();
+    });
+    tearDownAll(() async {
+      await testContext.tearDownAll();
+    });
+    group('https', () {
+      functionsHttpGroup(testContext);
+    });
+    group('call', () {
+      functionsCallGroup(testContext);
+    });
   });
 }

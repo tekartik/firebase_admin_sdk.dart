@@ -7,14 +7,34 @@ import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
 import 'package:tekartik_http/http_client.dart';
 
-/// https function
-const testFunctionHttpsV1 = 'admin-sdk-https-v1';
+import 'src/constants.dart';
+export 'src/constants.dart';
 
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions) {
   functions.https.onAdminSdkRequest(
-    testFunctionHttpsV1,
+    testDartFunctionHttpsV1,
     functionsHttpV1Handler,
+  );
+  functions.https.onAdminSdkCall(
+    testDartFunctionCallV1,
+    functionsCallV1Handler,
+  );
+}
+
+/// Handler for the test call function.
+Future<CallableResult<Model>> functionsCallV1Handler(
+  FirebaseFunctionsAdminSdk firebaseFunctions,
+  CallableRequest<Object?> request,
+  CallableResponse<Model> response,
+) async {
+  var data = request.data;
+  return CallableResult(
+    Model.from({
+      'data': ?data,
+      'authUid': ?request.auth?.uid,
+      'instanceIdToken': ?request.instanceIdToken,
+    }),
   );
 }
 
