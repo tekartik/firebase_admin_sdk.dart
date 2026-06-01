@@ -56,7 +56,7 @@ class _FirebaseFirestoreServiceAdminSdk
   bool get supportsVectorValue => true;
 
   @override
-  bool get supportsBlobs => false;
+  bool get supportsBlobs => true;
 }
 
 FirebaseFirestoreServiceAdminSdk? _firestoreServiceAdminSdk;
@@ -145,6 +145,9 @@ class FirestoreAdminSdk
       return nativeValue;
     }
     if (nativeValue is Iterable) {
+      if (nativeValue is Uint8List) {
+        return Blob(nativeValue);
+      }
       return nativeValue
           .map((nativeValue) => _unwrapValue(nativeValue))
           .toList();
@@ -162,8 +165,6 @@ class FirestoreAdminSdk
         this,
         (nativeValue as sdk.DocumentReference<Map<String, Object?>>),
       );
-    } else if (nativeValue is Uint8List) {
-      return Blob(nativeValue);
     } else if (nativeValue is sdk.GeoPoint) {
       return GeoPoint(nativeValue.latitude, nativeValue.longitude);
     } else if (nativeValue is sdk.Timestamp) {
