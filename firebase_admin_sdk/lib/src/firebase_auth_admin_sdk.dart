@@ -3,15 +3,13 @@ import 'package:firebase_admin_sdk/auth.dart' as sdk;
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart' as admin_sdk;
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
-import 'package:tekartik_firebase_auth/auth.dart';
-import 'package:tekartik_firebase_auth/src/auth_mixin.dart'; // ignore: implementation_imports
+import 'package:tekartik_firebase_auth/auth_mixin.dart';
 
-/// Auth service for admin sdk.
-abstract class FirebaseAuthServiceAdminSdk implements AuthService {}
+import 'firebase_admin_sdk_common.dart';
 
 /// Auth service implementation for Admin SDK.
 class _FirebaseAuthServiceAdminSdk
-    with FirebaseProductServiceMixin<FirebaseAuth>, AuthServiceMixin
+    with FirebaseProductServiceMixin<FirebaseAuth>, FirebaseAuthServiceMixin
     implements FirebaseAuthServiceAdminSdk {
   @override
   Auth auth(App app) {

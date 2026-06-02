@@ -6,8 +6,7 @@ import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_firestore/firestore_mixin.dart';
 
-/// Firestore service for admin sdk.
-abstract class FirebaseFirestoreServiceAdminSdk implements FirestoreService {}
+import 'firebase_admin_sdk_common.dart';
 
 /// Firestore service implementation for Admin SDK.
 class _FirebaseFirestoreServiceAdminSdk

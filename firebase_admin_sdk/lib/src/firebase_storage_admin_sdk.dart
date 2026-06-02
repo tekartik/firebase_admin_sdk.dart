@@ -11,9 +11,7 @@ import 'package:tekartik_firebase_storage/storage.dart';
 import 'package:tekartik_firebase_storage/storage_mixin.dart';
 import 'package:tekartik_firebase_storage/utils/content_type.dart';
 
-/// Storage service for admin sdk.
-abstract class FirebaseStorageServiceAdminSdk
-    implements FirebaseStorageService {}
+import 'firebase_admin_sdk_common.dart';
 
 /// Storage service implementation for Admin SDK.
 class _FirebaseStorageServiceAdminSdk

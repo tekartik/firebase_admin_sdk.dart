@@ -5,14 +5,10 @@ import 'package:firebase_admin_sdk/firebase_admin_sdk.dart' as sdk;
 import 'package:tekartik_firebase/firebase_admin.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 
+import 'firebase_admin_sdk_common.dart';
+
 /// AdminSdk firebase api
 FirebaseAdminSdk get firebaseAdminSdk => prvFirebaseAdminSdk;
-
-/// AdminSdk extension (if any)
-abstract class FirebaseAdminSdk implements Firebase, FirebaseAdmin {}
-
-/// AdminSdk app extension (if any)
-abstract class FirebaseAppAdminSdk implements FirebaseApp {}
 
 /// Admin SDK specific firebase app options.
 abstract class FirebaseAppOptionsAdminSdk implements FirebaseAppOptions {}
@@ -63,33 +59,7 @@ class _FirebaseAppOptionsWithCredential
 }
 
 /// Rest extension.
-extension FirebaseAdminSdkExtension on FirebaseAdminSdk {
-  /// Initialize rest with a service account json map.
-  Future<FirebaseApp> initializeAppWithServiceAccountMap(
-    Map map, {
-
-    /// Overiden options (storage bucket, database url, ...)
-    FirebaseAppOptions? options,
-  }) async {
-    var projectId = map['project_id']!.toString();
-    var credential = sdk.Credential.fromServiceAccountParams(
-      clientId: map['client_id']?.toString(),
-      privateKey: map['private_key']!.toString(),
-      email: map['client_email']!.toString(),
-      projectId: projectId,
-    );
-
-    var newOptions = _FirebaseAppOptionsWithCredential(
-      credential: credential,
-      appOptions: FirebaseAppOptions(
-        projectId: projectId,
-        storageBucket: options?.storageBucket,
-      ),
-    );
-
-    return initializeApp(options: newOptions);
-  }
-}
+extension FirebaseAdminSdkExtension on FirebaseAdminSdk {}
 
 /// Mixin
 extension TekartikFirebaseMixinAdminSdkExtension on FirebaseAdminSdk {
@@ -139,6 +109,33 @@ class _TekartikFirebaseAdminSdk
       projectId: options.projectId,
       storageBucket: options.storageBucket,
     );
+  }
+
+  /// Initialize rest with a service account json map.
+  @override
+  Future<FirebaseApp> initializeAppWithServiceAccountMap(
+    Map map, {
+
+    /// Overiden options (storage bucket, database url, ...)
+    FirebaseAppOptions? options,
+  }) async {
+    var projectId = map['project_id']!.toString();
+    var credential = sdk.Credential.fromServiceAccountParams(
+      clientId: map['client_id']?.toString(),
+      privateKey: map['private_key']!.toString(),
+      email: map['client_email']!.toString(),
+      projectId: projectId,
+    );
+
+    var newOptions = _FirebaseAppOptionsWithCredential(
+      credential: credential,
+      appOptions: FirebaseAppOptions(
+        projectId: projectId,
+        storageBucket: options?.storageBucket,
+      ),
+    );
+
+    return initializeApp(options: newOptions);
   }
 
   @override
