@@ -1,7 +1,4 @@
-import 'dart:typed_data';
-
 import 'package:firebase_functions/firebase_functions.dart' as fn;
-import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
@@ -10,8 +7,6 @@ import 'package:tekartik_firebase_admin_sdk/mixin_admin_sdk.dart';
 //import 'package:tekartik_firebase_auth/src/auth.dart';
 import 'package:tekartik_firebase_functions/firebase_functions.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.dart';
-
-import 'import_http.dart';
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsFireUpRunner =
@@ -28,39 +23,30 @@ abstract class FirebaseFunctionsServiceAdminSdk
 }
 
 /// Admin SDK Firebase Functions instance.
-abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
-  /*
-  @override
-  HttpsFunctionsAdminSdk get https;
-
-  /// Native access
-  FirebaseFunctionsAdminSdkHttpsNamespace get httpsAdminSdk;
-
-  /// Register a function
-  void registerAdminSdkFunction(
-    // ignore: experimental_member_use
-    @mustBeConst String name,
-    FirebaseFunctionAdminSdk function,
-  );*/
-}
+abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {}
 
 /// Request handler
 typedef FirebaseFunctionsAdminSdkRequestHandler =
     FutureOr<fn.Response> Function(
-      FirebaseFunctionsAdminSdk firebaseFunctions,
+      FirebaseFunctions firebaseFunctions,
       fn.Request request,
     );
 
 /// Call handler
 typedef FirebaseFunctionsAdminSdkCallHandler<T extends Object> =
     Future<fn.CallableResult<T>> Function(
-      FirebaseFunctionsAdminSdk firebaseFunctions,
+      FirebaseFunctions firebaseFunctions,
       fn.CallableRequest<Object?> request,
       fn.CallableResponse<T> response,
     );
 
 /// Extension on native implementation
 extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
+  /// The abstracted firebase app;
+  FirebaseApp get firebaseApp =>
+      firebaseFunctionsServiceAdminSdk._impl.firebaseFunctionsAdminSdkApp ??=
+          firebaseAdminSdk.fromNativeApp(adminApp);
+
   /// Https handler.
   Future<fn.Response> Function(fn.Request request) httpsHandler(
     FirebaseFunctionsAdminSdkRequestHandler handler,
@@ -93,16 +79,7 @@ extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
 }
 
 /// Admin SDK Https functions.
-abstract class HttpsFunctionsAdminSdk implements HttpsFunctions {
-  /// Creates an HTTPS callable function (untyped data).
-  void onAdminSdkRequest(
-    // ignore: experimental_member_use
-    @mustBeConst String name,
-    RequestHandler handler, {
-    // ignore: experimental_member_use
-    @mustBeConst FirebaseFunctionsAdminSdkHttpsOptions? httpsOptions,
-  });
-}
+abstract class HttpsFunctionsAdminSdk implements HttpsFunctions {}
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsAdminSdkRunner =
@@ -113,6 +90,8 @@ class _FirebaseFunctionsServiceAdminSdk
         FirebaseProductServiceMixin<FirebaseFunctions>,
         FirebaseFunctionsServiceDefaultMixin
     implements FirebaseFunctionsServiceAdminSdk {
+  /// Global initialized once
+  FirebaseApp? firebaseFunctionsAdminSdkApp;
   @override
   FirebaseFunctionsAdminSdk functions(FirebaseApp app) {
     throw UnimplementedError(
@@ -188,96 +167,6 @@ class _CallRequestAdminSdk implements CallRequest {
   }
 }
 
-class _ExpressHttpRequestAdminSdk implements ExpressHttpRequest {
-  final fn.Request _rawRequest;
-
-  late Uint8List bytes;
-  late final ready = () async {
-    bytes = await listStreamGetBytes(_rawRequest.read());
-  }();
-  _ExpressHttpRequestAdminSdk(this._rawRequest);
-
-  @override
-  Object? get body => bytes;
-
-  String get bodyAsString => utf8.decode(bytes);
-
-  Map<String, dynamic> get bodyAsJson => parseJsonObject(bodyAsString)!;
-
-  @override
-  late final headers = () {
-    var headers = HttpHeadersMemory()..addMap(_rawRequest.headers);
-    return headers;
-  }();
-
-  @override
-  String get method => _rawRequest.method;
-
-  @override
-  Uri get requestedUri => _rawRequest.requestedUri;
-
-  late final _response = _ExpressHttpResponseAdminSdk();
-
-  /// exposed for caller
-  fn.Response get fnResponse => _response.response;
-  @override
-  ExpressHttpResponse get response => _response;
-
-  @override
-  Uri get uri => requestedUri;
-}
-
-class _ExpressHttpResponseAdminSdk implements ExpressHttpResponse {
-  @override
-  var statusCode = 200;
-  late fn.Response response;
-
-  _ExpressHttpResponseAdminSdk();
-
-  @override
-  Future<void> send([Object? body]) async {
-    var finalBody = body;
-    if (finalBody != null) {
-      if (finalBody is! Uint8List && finalBody is! String) {
-        finalBody = jsonEncode(finalBody);
-      }
-    }
-    response = fn.Response(
-      statusCode,
-      body: finalBody,
-      headers: headers.toMap().cast(),
-    );
-  }
-
-  @override
-  Future redirect(Uri location, {int? status = 302}) async {
-    statusCode = status ?? 302;
-    // headers.set(HttpHeaders.locationHeader, location.toString());
-  }
-
-  @override
-  late final headers = HttpHeadersMemory();
-
-  @override
-  Future<void> close() async {
-    response = fn.Response(statusCode, headers: headers.toMap().cast());
-  }
-
-  @override
-  Future<void> write(Object? obj) =>
-      throw UnsupportedError('write not supported');
-
-  @override
-  void add(Uint8List bytes) {
-    // TODO: implement add
-  }
-
-  @override
-  void writeln(String content) {
-    // TODO: implement writeln
-  }
-}
-
 extension on FirebaseFunctionsAdminSdk {
   // ignore: unused_element
   _FirebaseFunctionsAdminSdk get _impl => this as _FirebaseFunctionsAdminSdk;
@@ -305,7 +194,7 @@ class _FirebaseFunctionsAdminSdk
   });
 
   @override
-  late final app = firebaseAdminSdk.fromNativeApp(rawFunctions.adminApp);
+  FirebaseApp get app => rawFunctions.firebaseApp;
 
   @override
   late final HttpsFunctionsAdminSdk https = _HttpsAdminSdk(this);
@@ -364,38 +253,6 @@ class _HttpsAdminSdk
       fnHttpsOptions: null,
     );
   }
-
-  @override
-  void onAdminSdkRequest(
-    // ignore: experimental_member_use
-    @mustBeConst String name,
-    RequestHandler handler, {
-    // ignore: experimental_member_use
-    @mustBeConst FirebaseFunctionsAdminSdkHttpsOptions? httpsOptions,
-  }) {
-    _functions.httpsAdminSdk.onRequest(
-      (request) async {
-        var express = _ExpressHttpRequestAdminSdk(request);
-        await express.ready;
-        await handler.call(express);
-        return express._response.response;
-      },
-      // ignore: non_const_argument_for_const_parameter
-      name: name, // Name mapping logic would go here
-      // ignore: non_const_argument_for_const_parameter
-      options: httpsOptions,
-    );
-  }
-
-  /*
-    var function = _HttpsFunctionAdminSdk(
-      httpsAdminSdk: this,
-      handler: handler,
-      httpsOptions: null,
-      fnHttpsOptions: httpsOptions,
-    );
-    function.register(name);
-  }*/
 }
 
 /// Admin SDK Https function.
@@ -471,43 +328,9 @@ class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {
 
   @override
   void register(String name) {
-    httpsAdminSdk._functions.rawFunctions.https.onRequest(
-      (request) async {
-        var express = _ExpressHttpRequestAdminSdk(request);
-        await express.ready;
-        await handler.call(express);
-        return express._response.response;
-      },
-      // ignore: non_const_argument_for_const_parameter
-      name: name, // Name mapping logic would go here
-      // ignore: non_const_argument_for_const_parameter
-      options: fnHttpsOptions ?? _wrapHttpsOptions(httpsOptions),
+    throw UnsupportedError(
+      'user runFunctions with onRequest for Admin SDK functions registration',
     );
-  }
-
-  fn.HttpsOptions? _wrapHttpsOptions(HttpsOptions? httpsOptions) {
-    if (httpsOptions == null) {
-      return null;
-    }
-    var globalOptions = wrapGlobalOptions(httpsOptions);
-    var fnCors = wrapCors(httpsOptions.cors);
-    // Set maxInstances to control costs during unexpected traffic spikes.
-    // https://firebase.google.com/docs/functions/manage-functions#min-max-instances
-
-    var fnRegion = wrapRegion(httpsOptions.region);
-    var fnMaxInstances = wrapInstances(httpsOptions.maxInstances);
-    var fnTimeoutSeconds = wrapTimeoutSeconds(httpsOptions.timeoutSeconds);
-    // ignore: avoid_print
-    print(
-      'maxInstances: ${fnMaxInstances?.value()}, region: ${fnRegion?.value()}, timeoutSeconds: ${fnTimeoutSeconds?.value()}',
-    );
-    var options = fn.HttpsOptions(
-      cors: fnCors,
-      region: globalOptions.region,
-      maxInstances: globalOptions.maxInstances,
-      timeoutSeconds: globalOptions.timeoutSeconds,
-    );
-    return options;
   }
 }
 

@@ -29,6 +29,7 @@ Future main() async {
     region: regionBelgium,
     emulatorOptions: FirebaseEmulatorOptions(
       onlyFunctions: true,
+      onlyAuth: true,
       projectId: fbProjectId,
       debug: false,
     ),

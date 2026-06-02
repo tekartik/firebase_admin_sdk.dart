@@ -66,6 +66,23 @@ void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
       },
     });
   });
+
+  test('auth/users', () async {
+    var request = TestApiRequest()..command.v = testApiCommandAuthUsers;
+    var uri = context.httpsUri(testDartFunctionCallV1);
+    var map = (await httpClientRead(
+      client,
+      httpMethodPost,
+      uri,
+      headers: (HttpHeaders()..mimeType = httpContentTypeJson).toStringMap(),
+
+      /// 'data' field required
+      body: {'data': request.toMap()}.cvToJson(),
+    )).jsonToMap();
+    var result = map['result'] as Map;
+    // ignore: avoid_print
+    print('result: ${result.cvToJsonPretty()}');
+  });
 }
 
 /// Test group for functions HTTP.
