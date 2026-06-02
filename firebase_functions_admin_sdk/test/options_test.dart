@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:firebase_functions/firebase_functions.dart' as fn;
 import 'package:tekartik_firebase_functions/firebase_functions.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/src/functions_admin_sdk.dart';

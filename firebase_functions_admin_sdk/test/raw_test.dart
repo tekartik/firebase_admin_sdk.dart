@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:firebase_functions/firebase_functions.dart';
 import 'package:test/test.dart';
 
