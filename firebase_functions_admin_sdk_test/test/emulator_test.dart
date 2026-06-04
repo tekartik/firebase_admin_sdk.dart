@@ -3,10 +3,13 @@ library;
 
 import 'dart:io';
 import 'package:path/path.dart';
+import 'package:tekartik_app_http/app_http.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/emulator_test_context.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test_runner.dart';
-import 'package:tekartik_firebase_functions_call/functions_call.dart';
+import 'package:tekartik_firebase_functions_call_http/functions_call_http.dart';
+import 'package:tekartik_firebase_functions_test/firebase_functions_test_runner.dart';
+import 'package:tekartik_firebase_local/firebase_local.dart';
 import 'package:test/test.dart';
 
 var defaultRegion = regionBelgium;
@@ -34,12 +37,28 @@ Future main() async {
       debug: false,
     ),
   );
+  var prefix = 'adminsdk';
   group('firebase_functions_dart', () {
+    late FirebaseFunctionsTestClientContext testClientContext;
     setUpAll(() async {
       await testContext.setUpAll();
+
+      var app = newFirebaseAppMemory();
+      var firebaseFunctionsCall = firebaseFunctionsCallServiceHttp
+          .functionsCall(
+            app,
+            options: FirebaseFunctionsCallOptions(region: regionBelgium),
+          );
+
+      testClientContext = FirebaseFunctionsTestClientContext.urlTemplate(
+        httpClientFactory: httpClientFactoryIo,
+        urlTemplate: testContext.httpsUri('${prefix}__function__').toString(),
+        functionsCall: firebaseFunctionsCall,
+      );
     });
     tearDownAll(() async {
       await testContext.tearDownAll();
+      await testClientContext.close();
     });
     group('https', () {
       functionsHttpGroup(testContext);
@@ -47,5 +66,6 @@ Future main() async {
     group('call', () {
       functionsCallGroup(testContext);
     });
+    basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

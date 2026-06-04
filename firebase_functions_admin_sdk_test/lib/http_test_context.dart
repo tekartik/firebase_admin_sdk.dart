@@ -42,10 +42,14 @@ class FirebaseFunctionsAdminSdkHttpTestContext
     }
   }
 
-  late final _server = httpServerGetUri(functions.httpServer);
+  /// Get the server
+  HttpServer get server => functions.httpServer;
+
+  late final _serverUri = httpServerGetUri(functions.httpServer);
+
   @override
   Uri httpsUri(String path) =>
-      _server.replace(path: url.join(_server.path, path));
+      _serverUri.replace(path: url.join(_serverUri.path, path));
 
   @override
   late final client = httpFactory.client.newClient();

@@ -31,5 +31,13 @@ void main(List<String> args) {
         region: Region(SupportedRegion.europeWest1),
       ),
     );
+    firebase.https.onCall(
+      firebase.callHandler(callBasicAdminSdkHandler),
+      name: 'adminsdkbasic',
+      options: const CallableOptions(
+        cors: Cors(['*']),
+        region: Region(SupportedRegion.europeWest1),
+      ),
+    );
   });
 }

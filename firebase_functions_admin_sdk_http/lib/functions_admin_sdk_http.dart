@@ -4,9 +4,18 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
+import 'package:tekartik_firebase/firebase.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
+import 'package:tekartik_firebase_functions/firebase_functions.dart'
+    show
+        HttpsFunctions,
+        FirebaseFunctionsDefaultMixin,
+        HttpsFunctionsDefaultMixin,
+        FirebaseFunctionsServiceDefaultMixin;
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
-import 'package:tekartik_firebase_functions_http/firebase_functions_http.dart';
+import 'package:tekartik_firebase_functions_http/firebase_functions_http.dart'
+    show firebaseFunctionsHttpDefaultPort;
+
 import 'package:tekartik_http/http.dart';
 import 'package:tekartik_http/http_memory.dart';
 
@@ -171,19 +180,63 @@ class _FirebaseFunctionsAdminSdkHttp
                   acceptsStreaming: false,
                 );
 
-                var result = await function.handler(
-                  this,
-                  callableRequest,
-                  callableResponse,
-                );
+                Future<void> sendError(
+                  HttpResponse response,
+                  HttpsError error,
+                ) async {
+                  response.statusCode = error.httpStatusCode;
+                  response.headers.set(
+                    'Content-Type',
+                    'application/json; charset=utf-8',
+                  );
+                  response.write(jsonEncode(error.toErrorResponse()));
+                  await response.close();
+                }
 
-                request.response.statusCode = 200;
-                request.response.headers.set(
-                  'Content-Type',
-                  'application/json; charset=utf-8',
-                );
-                request.response.write(jsonEncode({'result': result.data}));
-                await request.response.close();
+                try {
+                  var result = await function.handler(
+                    this,
+                    callableRequest,
+                    callableResponse,
+                  );
+
+                  var response = result.toResponse();
+                  request.response.statusCode = response.statusCode;
+                  response.headers.forEach((name, value) {
+                    request.response.headers.set(name, value);
+                  });
+
+                  request.response.write(await response.readAsString());
+                  await request.response.close();
+                } on HttpsError catch (e) {
+                  var response = request.response;
+
+                  await sendError(response, e);
+                } catch (e) {
+                  var httpsError = InternalError('Internal error', {
+                    'exception': '$e',
+                  });
+                  var response = request.response;
+                  await sendError(response, httpsError);
+                }
+                /*
+                  request.response.statusCode = e.code;
+                  request.response.headers.set(
+                    'Content-Type',
+                    'application/json; charset=utf-8',
+                  );
+                  request.response.write(
+                    jsonEncode({
+                      'error': {
+                        'code': e.code,
+                        'message': e.message,
+                        'details': e.details,
+                      },
+                    }),
+                  );
+                  await request.response.close();
+                  return;
+                }*/
               }
               /*
             if (function is HttpsFunctionHttp) {

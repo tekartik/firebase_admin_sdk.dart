@@ -11,6 +11,7 @@ import 'package:tekartik_http/http_client.dart';
 import 'src/constants.dart';
 
 export 'src/constants.dart';
+export 'src/functions_basic_admin_sdk.dart';
 
 /// Auth users command
 /// Get the first 10 uids
