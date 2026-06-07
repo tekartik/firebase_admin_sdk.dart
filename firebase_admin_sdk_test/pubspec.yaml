@@ -31,6 +31,14 @@ dependencies:
     git:
       url: https://github.com/tekartik/firebase_firestore.dart
       path: firestore
+  tekartik_firebase_auth:
+    git:
+      url: https://github.com/tekartik/firebase_auth.dart
+      path: auth
+  tekartik_firebase_auth_test:
+    git:
+      url: https://github.com/tekartik/firebase_auth.dart
+      path: auth_test
 
 dev_dependencies:
   lints: ">=6.1.0"

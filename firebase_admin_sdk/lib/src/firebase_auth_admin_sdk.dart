@@ -3,6 +3,7 @@ import 'package:firebase_admin_sdk/auth.dart' as sdk;
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart' as admin_sdk;
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
+import 'package:tekartik_firebase_auth/auth_admin.dart';
 import 'package:tekartik_firebase_auth/auth_mixin.dart';
 
 import 'firebase_admin_sdk_common.dart';
@@ -36,11 +37,15 @@ FirebaseAuthServiceAdminSdk get firebaseAuthServiceAdminSdk =>
     _authServiceAdminSdk ??= _FirebaseAuthServiceAdminSdk();
 
 /// Auth Admin SDK.
-abstract class FirebaseAuthAdminSdk implements Auth {}
+abstract class FirebaseAuthAdminSdk
+    implements FirebaseAuth, FirebaseAuthAdmin {}
 
 /// Auth implementation for Admin SDK.
 class AuthAdminSdk
-    with FirebaseAppProductMixin<FirebaseAuth>, FirebaseAuthMixin
+    with
+        FirebaseAppProductMixin<FirebaseAuth>,
+        FirebaseAuthMixin,
+        FirebaseAuthAdminDefaultMixin
     implements FirebaseAuthAdminSdk {
   @override
   final FirebaseAuthServiceAdminSdk service;
@@ -72,6 +77,47 @@ class AuthAdminSdk
         return _UserRecordAdminSdk(user);
       }).toList(),
     );
+  }
+
+  @override
+  Future<void> deleteUser(String uid) async {
+    await nativeInstance.deleteUser(uid);
+  }
+
+  @override
+  Future<UserRecord> createUser(FirebaseAuthCreateUserRequest request) async {
+    var nativeUser = await nativeInstance.createUser(
+      admin_sdk.CreateRequest(
+        uid: request.uid,
+        email: request.email,
+        password: request.password,
+        //displayName: request.displayName,
+        //phoneNumber: request.phoneNumber,
+        //emailVerified: request.emailVerified,
+        disabled: request.disabled,
+      ),
+    );
+    return _UserRecordAdminSdk(nativeUser);
+  }
+
+  @override
+  Future<UserRecord?> getUser(String uid) async {
+    try {
+      var nativeUser = await nativeInstance.getUser(uid);
+      return _UserRecordAdminSdk(nativeUser);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<UserRecord?> getUserByEmail(String email) async {
+    try {
+      var nativeUser = await nativeInstance.getUserByEmail(email);
+      return _UserRecordAdminSdk(nativeUser);
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
