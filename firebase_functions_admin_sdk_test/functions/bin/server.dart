@@ -3,7 +3,7 @@ import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/functions.dart';
 
 void main(List<String> args) {
-  testFunctionsInitBuilders();
+  testFunctionsApiInitBuilders();
 
   runFunctions((firebase) {
     // Init needed services

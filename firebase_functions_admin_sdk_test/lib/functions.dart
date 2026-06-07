@@ -5,11 +5,13 @@ import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
+
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/functions.dart';
+
 import 'package:tekartik_http/http_client.dart';
 
-import 'src/constants.dart';
-
+export 'package:tekartik_firebase_functions_test/functions_basic.dart';
 export 'src/constants.dart';
 export 'src/functions_basic_admin_sdk.dart';
 
@@ -17,23 +19,9 @@ export 'src/functions_basic_admin_sdk.dart';
 /// Get the first 10 uids
 const testApiCommandAuthUsers = 'auth/users';
 
-/// Test Api request
-class TestApiRequest extends CvModelBase {
-  /// Command name.
-  final command = CvField<String>('command');
-
-  @override
-  List<CvField<Object?>> get fields => [command];
-}
-
-/// Init builders
-void testFunctionsInitBuilders() {
-  cvAddConstructors([TestApiRequest.new]);
-}
-
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions) {
-  testFunctionsInitBuilders();
+  testFunctionsApiInitBuilders();
   functions.https.onAdminSdkRequest(
     testDartFunctionHttpsV1,
     functionsHttpV1Handler,
