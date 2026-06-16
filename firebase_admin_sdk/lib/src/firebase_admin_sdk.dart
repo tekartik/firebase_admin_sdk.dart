@@ -71,6 +71,21 @@ extension TekartikFirebaseMixinAdminSdkExtension on FirebaseAdminSdk {
   }
 }
 
+// ignore: unused_element
+sdk.AppOptions? _unwrapAppOptions(FirebaseAppOptions appOptions) {
+  return sdk.AppOptions(
+    projectId: appOptions.projectId,
+    storageBucket: appOptions.storageBucket,
+  );
+}
+
+FirebaseAppOptions _wrapAppOptions(sdk.AppOptions rawAppOptions) {
+  return FirebaseAppOptions(
+    projectId: rawAppOptions.projectId,
+    storageBucket: rawAppOptions.storageBucket,
+  );
+}
+
 class _TekartikFirebaseAdminSdk
     with FirebaseWithAppsMixin, FirebaseAdminMixin, FirebaseMixin
     implements
@@ -78,11 +93,14 @@ class _TekartikFirebaseAdminSdk
         FirebaseAdmin,
         FirebaseAdminSdk,
         TekartikFirebaseAdminSdk {
-  FirebaseApp _fromRawAppSdk(sdk.FirebaseApp rawAppSdk, {AppOptions? options}) {
+  FirebaseApp _fromRawAppSdk(
+    sdk.FirebaseApp rawAppSdk, {
+    FirebaseAppOptions? options,
+  }) {
     var app = _TekartikFirebaseAppAdminSdk(
       this,
       rawAppSdk,
-      options ?? AppOptions(),
+      options ?? _wrapAppOptions(rawAppSdk.options),
     );
     return addApp(app);
   }

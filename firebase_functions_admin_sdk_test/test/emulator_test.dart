@@ -43,7 +43,9 @@ Future main() async {
     setUpAll(() async {
       await testContext.setUpAll();
 
-      var app = newFirebaseAppMemory();
+      var app = newFirebaseAppMemory(
+        options: FirebaseAppOptions(projectId: fbProjectId),
+      );
       var firebaseFunctionsCall = firebaseFunctionsCallServiceHttp
           .functionsCall(
             app,

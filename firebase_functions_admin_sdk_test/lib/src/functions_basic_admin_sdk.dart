@@ -1,3 +1,4 @@
+import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
 
@@ -15,6 +16,8 @@ Future<CallableResult<Object>> callBasicAdminSdkHandler(
         return CallableResult(data['data'] as Object);
       case 'not-found':
         throw NotFoundError('Not found', 'command $command');
+      case 'project-id':
+        return CallableResult(firebaseFunctions.app.projectId);
     }
     return CallableResult({'no': 'command'});
   }
