@@ -8,7 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  dev_test: ">=1.0.0+4"
+  dev_test: ">=1.0.3"
   http:
   path: ">=1.9.1"
   tekartik_firebase_functions_call:
@@ -27,15 +27,15 @@ dependencies:
     git:
       url: https://github.com/tekartik/firebase_admin_sdk.dart
       path: firebase_functions_admin_sdk
-  dev_build: ">=1.1.7+3"
-  firebase_functions:
+  dev_build: ">=1.1.8+2"
+  firebase_functions: ">=0.6.0"
   tekartik_http:
     git:
       url: https://github.com/tekartik/http.dart
       path: http
   tekartik_common_utils:
     git: https://github.com/tekartik/common_utils.dart
-  cv: ">=1.1.10+2"
+  cv: ">=1.1.11"
   tekartik_firebase_functions_admin_sdk_http:
     git:
       url: https://github.com/tekartik/firebase_admin_sdk.dart

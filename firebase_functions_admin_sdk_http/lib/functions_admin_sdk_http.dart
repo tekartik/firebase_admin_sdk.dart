@@ -12,10 +12,10 @@ import 'package:tekartik_firebase_functions/firebase_functions.dart'
         FirebaseFunctionsDefaultMixin,
         HttpsFunctionsDefaultMixin,
         FirebaseFunctionsServiceDefaultMixin;
+import 'package:tekartik_firebase_functions/firebase_functions.dart' as ff;
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http.dart'
     show firebaseFunctionsHttpDefaultPort;
-
 import 'package:tekartik_http/http.dart';
 import 'package:tekartik_http/http_memory.dart';
 

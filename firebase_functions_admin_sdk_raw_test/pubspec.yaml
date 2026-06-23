@@ -8,6 +8,7 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  dev_build: ">=1.1.8+2"
   path: ">=1.9.1"
   tekartik_app_dev_menu:
     git:
