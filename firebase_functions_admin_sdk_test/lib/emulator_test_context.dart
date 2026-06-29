@@ -52,4 +52,9 @@ class FirebaseFunctionsAdminSdkEmulatorTestContext
 
   @override
   var client = Client();
+
+  @override
+  // TODO: implement signInInfo
+  FirebaseFunctionsAdminSdkTestContextSignInInfo? get signInInfo =>
+      throw UnimplementedError();
 }

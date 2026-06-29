@@ -42,4 +42,9 @@ class FirebaseFunctionsAdminSdkDeployedTestContext
   /// Creates an HTTP test context.
   FirebaseFunctionsAdminSdkDeployedTestContext({required this.urlSuffix})
     : httpClientFactory = httpClientFactoryUniversal;
+
+  @override
+  // TODO: implement signInInfo
+  FirebaseFunctionsAdminSdkTestContextSignInInfo? get signInInfo =>
+      throw UnimplementedError();
 }

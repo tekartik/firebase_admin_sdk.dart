@@ -16,6 +16,8 @@ import 'package:tekartik_firebase_functions/firebase_functions.dart' as ff;
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http.dart'
     show firebaseFunctionsHttpDefaultPort;
+import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.dart'
+    show firebaseFunctionsHttpHeaderUid;
 import 'package:tekartik_http/http.dart';
 import 'package:tekartik_http/http_memory.dart';
 
@@ -163,6 +165,9 @@ class _FirebaseFunctionsAdminSdkHttp
                 }
                 await request.response.close();
               } else if (function is _HttpsCall) {
+                var userId = request.headers.value(
+                  firebaseFunctionsHttpHeaderUid,
+                );
                 var body = await httpStreamGetBytes(request);
                 var json = jsonDecode(utf8.decode(body)) as Map;
                 var data = json['data'];
@@ -175,6 +180,7 @@ class _FirebaseFunctionsAdminSdkHttp
                   ),
                   data,
                   null,
+                  auth: userId == null ? null : AuthData(uid: userId),
                 );
                 var callableResponse = CallableResponse<Object>(
                   acceptsStreaming: false,

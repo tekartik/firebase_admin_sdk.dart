@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
 import 'package:tekartik_http/http_client.dart';
 
 /// Test context interface for Firebase Functions Admin SDK.
@@ -14,4 +15,26 @@ abstract class FirebaseFunctionsAdminSdkTestContext {
 
   /// HTTP client used to perform requests.
   Client get client;
+
+  /// Sign in info
+  FirebaseFunctionsAdminSdkTestContextSignInInfo? get signInInfo;
+}
+
+/// Sign in info for Firebase Functions Admin SDK.
+class FirebaseFunctionsAdminSdkTestContextSignInInfo {
+  /// Authentication service.
+  final FirebaseAuth auth;
+
+  /// User email.
+  final String email;
+
+  /// User password.
+  final String password;
+
+  /// Creates a sign in info.
+  FirebaseFunctionsAdminSdkTestContextSignInInfo({
+    required this.auth,
+    required this.email,
+    required this.password,
+  });
 }

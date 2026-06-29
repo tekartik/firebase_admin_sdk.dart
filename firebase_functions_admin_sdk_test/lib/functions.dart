@@ -19,15 +19,23 @@ export 'src/functions_basic_admin_sdk.dart';
 /// Get the first 10 uids
 const testApiCommandAuthUsers = 'auth/users';
 
+/// Auth current user command
+const testApiCommandAuthMe = 'auth/me';
+
+/// Echo command
+///
+const testApiCommandEcho = 'echo';
+
 /// Declares the HTTP runner for admin SDK test functions.
-void declareRunner(FirebaseFunctionsAdminSdkHttp functions) {
+void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
+  prefix ??= '';
   testFunctionsApiInitBuilders();
   functions.https.onAdminSdkRequest(
-    testDartFunctionHttpsV1,
+    '$prefix$testDartFunctionHttpsV1',
     functionsHttpV1Handler,
   );
   functions.https.onAdminSdkCall(
-    testDartFunctionCallV1,
+    '$prefix$testDartFunctionCallV1',
     functionsCallV1Handler,
   );
 }
@@ -40,9 +48,10 @@ Future<CallableResult<Model>> functionsCallV1Handler(
 ) async {
   var data = request.data;
 
+  //print('headers: ${request.headers}')
   if (data is Map) {
-    var request = data.cv<TestApiRequest>();
-    var command = request.command.v;
+    var apiRequest = data.cv<TestApiRequest>();
+    var command = apiRequest.command.v;
     if (command != null) {
       switch (command) {
         case testApiCommandAuthUsers:
@@ -58,6 +67,11 @@ Future<CallableResult<Model>> functionsCallV1Handler(
                   .toList(),
             }),
           );
+        case testApiCommandAuthMe:
+          var userId = request.auth?.uid;
+          return CallableResult(asModel({'uid': userId}));
+        case testApiCommandEcho:
+          return CallableResult(Model.from({'data': data}));
       }
     }
   }

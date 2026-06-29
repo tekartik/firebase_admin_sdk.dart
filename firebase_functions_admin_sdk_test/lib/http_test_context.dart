@@ -9,6 +9,8 @@ import 'package:tekartik_http_io/http_io.dart';
 /// HTTP test context for Firebase Functions Admin SDK.
 class FirebaseFunctionsAdminSdkHttpTestContext
     implements FirebaseFunctionsAdminSdkTestContext {
+  @override
+  final FirebaseFunctionsAdminSdkTestContextSignInInfo? signInInfo;
   var _refCount = 0;
 
   /// The HTTP factory.
@@ -59,5 +61,6 @@ class FirebaseFunctionsAdminSdkHttpTestContext
     HttpFactory? httpFactory,
     required this.declarer,
     required this.app,
+    this.signInInfo,
   }) : httpFactory = httpFactory ?? httpFactoryIo;
 }
