@@ -557,7 +557,7 @@ class _CollectionReferenceAdminSdk extends _QueryAdminSdk
 
   @override
   Future<DocumentReference> add(Map<String, Object?> data) async {
-    var sdkDocRef = await nativeInstance.add(data);
+    var sdkDocRef = await nativeInstance.add(firestoreAdminSdk._wrapData(data));
     return firestoreAdminSdk._wrapDocumentReference(sdkDocRef);
   }
 
