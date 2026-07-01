@@ -199,11 +199,19 @@ class _FirebaseFunctionsAdminSdk
   @override
   late final HttpsFunctionsAdminSdk https = _HttpsAdminSdk(this);
 
+  @override
+  late final SchedulerFunctionsAdminSdk scheduler = _SchedulerAdminSdk(this);
+
   /// register a function
   @override
   void operator []=(String key, FirebaseFunction function) {
     // ignore: non_const_argument_for_const_parameter
     registerFunction(key, function);
+  }
+
+  @override
+  void registerFunction(String name, FirebaseFunction function) {
+    (function as FirebaseFunctionAdminSdk).register(name);
   }
 
   @override
@@ -262,6 +270,86 @@ abstract class HttpsFunctionAdminSdk
 /// Admin SDK Https callable function.
 abstract class HttpsCallableFunctionAdminSdk
     implements FirebaseFunctionAdminSdk, HttpsCallableFunction {}
+
+/// Admin SDK Scheduler functions.
+abstract class SchedulerFunctionsAdminSdk implements SchedulerFunctions {}
+
+/// Admin SDK scheduled function.
+abstract class ScheduleFunctionAdminSdk
+    implements FirebaseFunctionAdminSdk, ScheduleFunction {}
+
+class _SchedulerAdminSdk
+    with SchedulerFunctionsDefaultMixin
+    implements SchedulerFunctionsAdminSdk {
+  final _FirebaseFunctionsAdminSdk _functions;
+
+  _SchedulerAdminSdk(this._functions);
+
+  @override
+  ScheduleFunction onSchedule(
+    ScheduleOptions scheduleOptions,
+    ScheduleHandler handler,
+  ) {
+    return _ScheduleFunctionAdminSdk(
+      schedulerAdminSdk: this,
+      handler: handler,
+      scheduleOptions: scheduleOptions,
+    );
+  }
+}
+
+class _ScheduleFunctionAdminSdk implements ScheduleFunctionAdminSdk {
+  final _SchedulerAdminSdk schedulerAdminSdk;
+  final ScheduleHandler handler;
+  final ScheduleOptions scheduleOptions;
+
+  _ScheduleFunctionAdminSdk({
+    required this.schedulerAdminSdk,
+    required this.handler,
+    required this.scheduleOptions,
+  });
+
+  @override
+  void register(String name) {
+    // The underlying Admin SDK derives the deployed function name from the
+    // schedule expression itself, so [name] is only used to key the function
+    // in the local registry and has no effect on the deployed name.
+    // ignore: experimental_member_use
+    schedulerAdminSdk._functions.rawFunctions.scheduler.onSchedule(
+      (event) async => await handler(_ScheduleEventAdminSdk(event)),
+      // ignore: non_const_argument_for_const_parameter
+      schedule: scheduleOptions.schedule,
+      // ignore: non_const_argument_for_const_parameter
+      options: _wrapScheduleOptions(scheduleOptions),
+    );
+  }
+
+  fn.ScheduleOptions _wrapScheduleOptions(ScheduleOptions scheduleOptions) {
+    var globalOptions = wrapGlobalOptions(scheduleOptions);
+    return fn.ScheduleOptions(
+      region: globalOptions.region,
+      maxInstances: globalOptions.maxInstances,
+      timeoutSeconds: globalOptions.timeoutSeconds,
+      timeZone: scheduleOptions.timeZone == null
+          ? null
+          : fn.TimeZone(scheduleOptions.timeZone!),
+    );
+  }
+}
+
+class _ScheduleEventAdminSdk
+    with SchedulerEventDefaultMixin
+    implements ScheduleEvent {
+  final fn.ScheduledEvent nativeEvent;
+
+  _ScheduleEventAdminSdk(this.nativeEvent);
+
+  @override
+  String? get jobName => nativeEvent.jobName;
+
+  @override
+  String? get scheduleTime => nativeEvent.scheduleTime;
+}
 
 /// Firebase functions common
 abstract class FirebaseFunctionAdminSdk implements FirebaseFunction {
