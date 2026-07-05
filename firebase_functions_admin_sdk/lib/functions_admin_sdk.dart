@@ -12,6 +12,7 @@ export 'src/functions_admin_sdk.dart'
         FirebaseFunctionsAdminSdk,
         FirebaseFunctionsAdminSdkFirebaseExt,
         FirebaseFunctionsAdminSdkRequestHandler,
+        FirebaseFunctionsAdminSdkExt,
         FirebaseFunctionsAdminSdkCallHandler;
 export 'src/https_error.dart'
     show

@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:firebase_functions/firebase_functions.dart' as fn;
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
@@ -43,7 +45,7 @@ typedef FirebaseFunctionsAdminSdkCallHandler<T extends Object> =
 /// Extension on native implementation
 extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
   /// The abstracted firebase app;
-  FirebaseApp get firebaseApp =>
+  FirebaseAppAdminSdk get firebaseApp =>
       firebaseFunctionsServiceAdminSdk._impl.firebaseFunctionsAdminSdkApp ??=
           firebaseAdminSdk.fromNativeApp(adminApp);
 
@@ -91,7 +93,7 @@ class _FirebaseFunctionsServiceAdminSdk
         FirebaseFunctionsServiceDefaultMixin
     implements FirebaseFunctionsServiceAdminSdk {
   /// Global initialized once
-  FirebaseApp? firebaseFunctionsAdminSdkApp;
+  FirebaseAppAdminSdk? firebaseFunctionsAdminSdkApp;
   @override
   FirebaseFunctionsAdminSdk functions(FirebaseApp app) {
     throw UnimplementedError(
@@ -170,6 +172,20 @@ class _CallRequestAdminSdk implements CallRequest {
 extension on FirebaseFunctionsAdminSdk {
   // ignore: unused_element
   _FirebaseFunctionsAdminSdk get _impl => this as _FirebaseFunctionsAdminSdk;
+}
+
+final bool _isEmulator = io.Platform.environment['FIREBASE_EMULATOR'] == 'true';
+
+/// Public extension
+extension FirebaseFunctionsAdminSdkExt on FirebaseFunctionsAdminSdk {
+  /// True if running on emulator
+  bool get isEmulator => _isEmulator;
+}
+
+/// Public extension
+extension FirebaseFunctionsOnAdminSdkExt on FirebaseFunctions {
+  /// True if running on emulator
+  bool get isAdminSdkEmulator => _isEmulator;
 }
 
 extension on FirebaseFunctionsServiceAdminSdk {
