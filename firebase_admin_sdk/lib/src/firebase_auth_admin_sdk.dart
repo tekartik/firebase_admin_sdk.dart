@@ -90,10 +90,7 @@ class AuthAdminSdk
     required String password,
   }) async {
     var userRecord = await createUser(
-      FirebaseAuthCreateUserRequest(
-        email: email,
-        password: password,
-      ),
+      FirebaseAuthCreateUserRequest(email: email, password: password),
     );
     var user = _UserAdminSdk(
       uid: userRecord.uid,
