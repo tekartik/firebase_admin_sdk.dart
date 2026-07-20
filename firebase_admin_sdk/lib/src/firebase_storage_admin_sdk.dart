@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart' as admin_sdk;
 import 'package:firebase_admin_sdk/storage.dart' as admin_sdk;
-
+import 'package:google_cloud_protobuf/protobuf.dart' as sdk;
 import 'package:google_cloud_storage/google_cloud_storage.dart' as sdk;
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
@@ -108,13 +109,8 @@ class BucketAdminSdk with BucketMixin implements Bucket {
     var stream = nativeInstance.storage.listObjects(
       nativeInstance.name,
       maxResults: options?.maxResults,
+      prefix: options?.prefix,
     );
-    // hack fix by name
-    var prefix = options?.prefix;
-    if (prefix != null) {
-      stream = stream.where((item) => (item.name ?? '').startsWith(prefix));
-    }
-
     final objects = await stream.toList();
 
     return GetFilesResponse(
@@ -186,12 +182,8 @@ class FileAdminSdk with FileMixin implements File {
   }
 }
 
-extension on dynamic {
+extension on sdk.Timestamp {
   DateTime timestampToDateTime() {
-    // ignore: avoid_dynamic_calls
-    var seconds = this.seconds as int;
-    // ignore: avoid_dynamic_calls
-    var nanos = this.nanos as int;
     return Timestamp(seconds, nanos).toDateTime();
   }
 }

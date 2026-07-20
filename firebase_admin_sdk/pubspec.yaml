@@ -9,7 +9,8 @@ environment:
 # Add regular dependencies here.
 dependencies:
   path: ">=1.9.1"
-  google_cloud_storage:
+  google_cloud_storage: ">=0.6.3"
+  google_cloud_protobuf: ">=0.5.1"
   tekartik_common_utils:
     git: https://github.com/tekartik/common_utils.dart
   firebase_admin_sdk: ">=0.5.1"
