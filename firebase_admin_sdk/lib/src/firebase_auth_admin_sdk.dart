@@ -85,6 +85,31 @@ class AuthAdminSdk
   }
 
   @override
+  Future<UserCredential> createUserWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    var userRecord = await createUser(
+      FirebaseAuthCreateUserRequest(
+        email: email,
+        password: password,
+      ),
+    );
+    var user = _UserAdminSdk(
+      uid: userRecord.uid,
+      email: userRecord.email,
+      displayName: userRecord.displayName,
+      emailVerified: userRecord.emailVerified,
+      phoneNumber: userRecord.phoneNumber,
+      photoURL: userRecord.photoURL,
+    );
+    return _UserCredentialAdminSdk(
+      credential: _AuthCredentialAdminSdk(),
+      user: user,
+    );
+  }
+
+  @override
   Future<UserRecord> createUser(FirebaseAuthCreateUserRequest request) async {
     var nativeUser = await nativeInstance.createUser(
       admin_sdk.CreateRequest(
@@ -175,4 +200,54 @@ class _UserRecordAdminSdk
   @override
   String? get tokensValidAfterTime =>
       nativeUserRecord.tokensValidAfterTime?.toIso8601String();
+}
+
+class _UserAdminSdk with FirebaseUserMixin implements User {
+  @override
+  final String uid;
+
+  @override
+  final String? email;
+
+  @override
+  final String? displayName;
+
+  @override
+  final bool emailVerified;
+
+  @override
+  bool get isAnonymous => email?.trim().isEmpty ?? true;
+
+  @override
+  final String? phoneNumber;
+
+  @override
+  final String? photoURL;
+
+  @override
+  String? get providerId => null;
+
+  _UserAdminSdk({
+    required this.uid,
+    this.email,
+    this.displayName,
+    this.emailVerified = false,
+    this.phoneNumber,
+    this.photoURL,
+  });
+}
+
+class _UserCredentialAdminSdk implements UserCredential {
+  @override
+  final AuthCredential credential;
+
+  @override
+  final User user;
+
+  _UserCredentialAdminSdk({required this.credential, required this.user});
+}
+
+class _AuthCredentialAdminSdk implements AuthCredential {
+  @override
+  String get providerId => 'google.com';
 }
