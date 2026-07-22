@@ -23,12 +23,12 @@ const testApiCommandAuthUsers = 'auth/users';
 const testApiCommandAuthMe = 'auth/me';
 
 /// Echo command
-///
 const testApiCommandEcho = 'echo';
 
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
   prefix ??= '';
+
   testFunctionsApiInitBuilders();
   functions.https.onAdminSdkRequest(
     '$prefix$testDartFunctionHttpsV1',
@@ -69,6 +69,7 @@ Future<CallableResult<Model>> functionsCallV1Handler(
           );
         case testApiCommandAuthMe:
           var userId = request.auth?.uid;
+
           return CallableResult(asModel({'uid': userId}));
         case testApiCommandEcho:
           return CallableResult(Model.from({'data': data}));

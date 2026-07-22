@@ -165,6 +165,7 @@ class _CallRequestAdminSdk implements CallRequest {
     if (data == null) {
       return null;
     }
+
     return jsonEncode(data);
   }
 }

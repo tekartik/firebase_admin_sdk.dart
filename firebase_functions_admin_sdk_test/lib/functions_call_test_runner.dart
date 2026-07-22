@@ -88,6 +88,7 @@ void ffAdminSdkCallTestGroup(
           );
           userId = user.user.uid;
         }
+
         Future<String?> getUserId() async {
           var request = TestApiRequest()..command.v = testApiCommandAuthMe;
           var response = await functionsCallable.call<Model>(request.toMap());
@@ -101,10 +102,12 @@ void ffAdminSdkCallTestGroup(
         var readUid = await getUserId();
         if (signInInfo != null) {
           expect(readUid, isNotNull);
+
           expect(readUid, userId);
           await signInInfo.auth.signOut();
 
           readUid = await getUserId();
+
           expect(readUid, isNull);
         }
       });

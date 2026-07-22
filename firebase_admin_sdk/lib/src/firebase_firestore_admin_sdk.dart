@@ -20,6 +20,7 @@ class _FirebaseFirestoreServiceAdminSdk
       // The admin_sdk.FirebaseApp has a firestore() method returning a google_cloud_firestore.Firestore
       var sdkApp =
           (adminApp as dynamic).nativeInstance as admin_sdk.FirebaseApp;
+
       return FirestoreAdminSdk(this, adminApp, sdkApp.firestore());
     });
   }
@@ -208,6 +209,7 @@ class FirestoreAdminSdk
   ) {
     return nativeInstance.runTransaction((sdkTransaction) async {
       var transaction = _TransactionAdminSdk(this, sdkTransaction);
+
       return await updateFunction(transaction);
     });
   }

@@ -57,8 +57,10 @@ Future<void> deleteGenerateAndDumpFunctions() async {
 /// Main menu
 Future<void> firebaseFunctionsMenuMain(List<String> args) async {
   var app = App(path: '.');
+
   await mainMenuUniversal(args, () {
     var file = File(join('functions', 'functions.yaml'));
+
     item('delete functions.yaml', () async {
       // Force re-generation of functions.yaml
 
@@ -66,20 +68,26 @@ Future<void> firebaseFunctionsMenuMain(List<String> args) async {
         await file.delete();
       }
     });
+
     item('generate functions.yaml', () async {
       var shell = Shell();
       await shell.run('firebase emulators:exec --only functions "exit 0"');
     });
+
     item('Dump functions.yaml', () async {
       var content = await file.readAsString();
+
       write(content);
     });
+
     item('emulator is supported', () async {
       write('isSupported: ${await app.isEmulatorSupported()}');
     });
+
     item('start firebase emulator', () async {
       await app.startFirebaseEmulator();
     });
+
     item('stop firebase emulator', () async {
       await app.emulator?.stop();
     });

@@ -102,6 +102,7 @@ class _TekartikFirebaseAdminSdk
       rawAppSdk,
       options ?? _wrapAppOptions(rawAppSdk.options),
     );
+
     return addApp(app);
   }
 

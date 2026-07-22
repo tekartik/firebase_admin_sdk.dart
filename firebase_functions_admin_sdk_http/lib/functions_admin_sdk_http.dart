@@ -223,6 +223,7 @@ class _FirebaseFunctionsAdminSdkHttp
                     'exception': '$e',
                   });
                   var response = request.response;
+
                   await sendError(response, httpsError);
                 }
                 /*
@@ -340,6 +341,7 @@ class _HttpsFunctionsAdminSdkHttp
           acceptsStreaming: response.acceptsStreaming,
           heartbeatSeconds: response.heartbeatSeconds,
         );
+
         return await handler(ff, request, typedResponse);
       },
     );
@@ -366,6 +368,7 @@ class _FirebaseFunctionsServiceAdminSdkHttp
       app: app,
       httpServerFactory: _httpServerFactory,
     );
+
     await runner(ff);
     await ff.serveHttp();
   }

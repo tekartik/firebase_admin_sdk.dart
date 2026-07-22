@@ -13,6 +13,7 @@ extension on Uri {
 /// Test group fpr functions Call
 void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
   late Client client;
+
   setUpAll(() async {
     await context.setUpAll();
     client = context.client;
@@ -88,6 +89,7 @@ void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
 /// Test group for functions HTTP.
 void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
   late Client client;
+
   setUpAll(() async {
     await context.setUpAll();
     client = context.client;
@@ -99,8 +101,10 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     var result = await httpClientRead(client, httpMethodGet, uri);
     // ignore: avoid_print
     print('helloWorld: $result');
+
     expect(result, contains('Hello'));
     var response = await httpClientSend(client, httpMethodGet, uri);
+
     expect(response.statusCode, 200);
     // headers:
     // {
@@ -119,6 +123,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     //           }
     expect(response.headers['content-length'], '5');
   });
+
   test('?info', () async {
     var uri = context.httpsUri(testDartFunctionHttpsV1).withInfo();
     var result = await httpClientRead(client, httpMethodGet, uri);
@@ -133,6 +138,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     print(map.cvToJsonPretty());
 
     expect(map['requestedUri'], endsWith('/?info=true'));
+
     expect(map['url'], endsWith('?info=true')); // deployed has en empty url
     map
       ..remove('requestedUri')
@@ -161,6 +167,7 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
       expect(map['requestedUri'], endsWith('/sub?info=true'));
       expect(
         map['url'],
+
         endsWith('sub?info=true'),
       ); // deployed has en empty url
     }
@@ -169,8 +176,11 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
 
     // ignore: avoid_print
     print(map.cvToJsonPretty());
+
     expect(map['body'], 'test');
+
     expect(map['mimeType'], 'text/plain');
+
     expect(map['contentLength'], 4);
 
     result = await httpClientRead(
@@ -182,8 +192,11 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     map = result.jsonToMap();
     // ignore: avoid_print
     print(map.cvToJsonPretty());
+
     expect(map['bodyBytes'], [0xC0, 0x80]);
+
     expect(map['mimeType'], isNull);
+
     expect(map['contentLength'], 2);
 
     result = await httpClientRead(
@@ -196,8 +209,11 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     map = result.jsonToMap();
     // ignore: avoid_print
     print(map.cvToJsonPretty());
+
     expect(map['bodyBytes'], [0xC0, 0x80]);
+
     expect(map['mimeType'], httpContentTypeBytes);
+
     expect(map['contentLength'], 2);
   });
 }

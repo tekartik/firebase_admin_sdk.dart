@@ -32,6 +32,7 @@ class FirebaseFunctionsAdminSdkHttpTestContext
       );
       await service.fireUp(app, (functions) async {
         this.functions = functions;
+
         await declarer(functions);
       });
     }

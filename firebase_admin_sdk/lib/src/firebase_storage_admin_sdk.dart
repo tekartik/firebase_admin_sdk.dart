@@ -27,6 +27,7 @@ class _FirebaseStorageServiceAdminSdk
       var adminApp = app as FirebaseAppAdminSdk;
       var sdkApp =
           (adminApp as dynamic).nativeInstance as admin_sdk.FirebaseApp;
+
       return FirebaseStorageAdminSdk(this, adminApp, sdkApp.storage());
     });
   }
@@ -65,6 +66,7 @@ class FirebaseStorageAdminSdk
         'No bucket name provided and no default bucket in options',
       );
     }
+
     return BucketAdminSdk(this, nativeInstance.bucket(bucketName));
   }
 
@@ -178,6 +180,7 @@ class FileAdminSdk with FileMixin implements File {
   @override
   Future<FileMetadata> getMetadata() async {
     var sdkMetadata = await nativeInstance.metadata();
+
     return FileMetadataAdminSdk(sdkMetadata);
   }
 }

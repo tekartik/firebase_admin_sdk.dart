@@ -20,8 +20,10 @@ Future<CallableResult<Object>> callBasicAdminSdkHandler(
       case 'project-id':
         return CallableResult(firebaseFunctions.app.projectId);
     }
+
     return CallableResult({'no': 'command'});
   }
+
   return CallableResult({'no': 'data'});
 }
 

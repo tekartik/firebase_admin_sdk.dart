@@ -19,6 +19,7 @@ class _FirebaseAuthServiceAdminSdk
       var adminApp = app as FirebaseAppAdminSdk;
       var sdkApp =
           (adminApp as dynamic).nativeInstance as admin_sdk.FirebaseApp;
+
       return AuthAdminSdk(this, adminApp, sdkApp.auth());
     });
   }
