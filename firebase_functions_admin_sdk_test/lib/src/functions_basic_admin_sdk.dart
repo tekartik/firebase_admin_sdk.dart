@@ -16,7 +16,12 @@ Future<CallableResult<Object>> callBasicAdminSdkHandler(
       case 'echo':
         return CallableResult(data['data'] as Object);
       case 'not-found':
-        throw NotFoundError('Not found', 'command $command');
+        throw HttpResponseException.notFound(
+          message: 'Not found',
+          details: [
+            {'details': 'command $command'},
+          ],
+        );
       case 'project-id':
         return CallableResult(firebaseFunctions.app.projectId);
     }
