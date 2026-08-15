@@ -219,13 +219,12 @@ class _FirebaseFunctionsAdminSdkHttp
 
                   await sendError(response, e);
                 } catch (e) {
-                  var httpsError =
-                      HttpResponseException.internalServerError(
-                        message: 'Internal error',
-                        details: [
-                          {'exception': '$e'},
-                        ],
-                      );
+                  var httpsError = HttpResponseException.internalServerError(
+                    message: 'Internal error',
+                    details: [
+                      {'exception': '$e'},
+                    ],
+                  );
                   var response = request.response;
 
                   await sendError(response, httpsError);

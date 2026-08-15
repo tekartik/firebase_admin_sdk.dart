@@ -70,7 +70,11 @@ void main() async {
         (FirebaseFunctionsHttpsErrorCode.internal, 500, 'INTERNAL'),
         (FirebaseFunctionsHttpsErrorCode.unavailable, 503, 'UNAVAILABLE'),
         (FirebaseFunctionsHttpsErrorCode.dataLoss, 500, 'DATA_LOSS'),
-        (FirebaseFunctionsHttpsErrorCode.unauthenticated, 401, 'UNAUTHENTICATED'),
+        (
+          FirebaseFunctionsHttpsErrorCode.unauthenticated,
+          401,
+          'UNAUTHENTICATED',
+        ),
       ];
       for (var (code, statusCode, status) in expected) {
         var adminSdkError = FirebaseFunctionsHttpsError(
