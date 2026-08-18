@@ -25,7 +25,10 @@ abstract class FirebaseFunctionsServiceAdminSdk
 }
 
 /// Admin SDK Firebase Functions instance.
-abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {}
+abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
+  /// Task queue (`onTaskDispatched`) functions.
+  TasksFunctionsAdminSdk get tasks;
+}
 
 /// Request handler
 typedef FirebaseFunctionsAdminSdkRequestHandler =
@@ -40,6 +43,15 @@ typedef FirebaseFunctionsAdminSdkCallHandler<T extends Object> =
       FirebaseFunctions firebaseFunctions,
       fn.CallableRequest<Object?> request,
       fn.CallableResponse<T> response,
+    );
+
+/// Task dispatched handler.
+///
+/// Handles a task enqueued in a Cloud Tasks queue (see `onTaskDispatched`).
+typedef FirebaseFunctionsAdminSdkTaskHandler =
+    Future<void> Function(
+      FirebaseFunctions firebaseFunctions,
+      fn.TaskRequest<Object?> request,
     );
 
 /// Extension on native implementation
@@ -76,6 +88,27 @@ extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
         rawFunctions: this,
       );
       return await handler.call(ff, request, response);
+    };
+  }
+
+  /// Task dispatched handler.
+  ///
+  /// To use with the native `tasks.onTaskDispatched`:
+  /// ```dart
+  /// firebase.tasks.onTaskDispatched(
+  ///   firebase.taskHandler(myTaskHandler),
+  ///   name: 'my-task',
+  /// );
+  /// ```
+  Future<void> Function(fn.TaskRequest<Object?> request) taskHandler(
+    FirebaseFunctionsAdminSdkTaskHandler handler,
+  ) {
+    return (request) async {
+      var ff = _FirebaseFunctionsAdminSdk(
+        service: firebaseFunctionsServiceAdminSdk._impl,
+        rawFunctions: this,
+      );
+      await handler.call(ff, request);
     };
   }
 }
@@ -219,6 +252,9 @@ class _FirebaseFunctionsAdminSdk
   @override
   late final SchedulerFunctionsAdminSdk scheduler = _SchedulerAdminSdk(this);
 
+  @override
+  late final TasksFunctionsAdminSdk tasks = _TasksAdminSdk(this);
+
   /// register a function
   @override
   void operator []=(String key, FirebaseFunction function) {
@@ -287,6 +323,107 @@ abstract class HttpsFunctionAdminSdk
 /// Admin SDK Https callable function.
 abstract class HttpsCallableFunctionAdminSdk
     implements FirebaseFunctionAdminSdk, HttpsCallableFunction {}
+
+/// The status code (no content) returned by a task dispatched function.
+const taskDispatchedNoContentStatusCode = 204;
+
+/// Cloud Tasks header holding the name of the queue.
+const cloudTasksHeaderQueueName = 'X-CloudTasks-QueueName';
+
+/// Cloud Tasks header holding the "short" name of the task.
+const cloudTasksHeaderTaskName = 'X-CloudTasks-TaskName';
+
+/// Cloud Tasks header holding the number of times the task has been retried.
+const cloudTasksHeaderTaskRetryCount = 'X-CloudTasks-TaskRetryCount';
+
+/// Cloud Tasks header holding the number of times the task has been executed.
+const cloudTasksHeaderTaskExecutionCount = 'X-CloudTasks-TaskExecutionCount';
+
+/// Cloud Tasks header holding the schedule time of the task.
+const cloudTasksHeaderTaskEta = 'X-CloudTasks-TaskETA';
+
+/// Cloud Tasks header holding the response code of the previous retry.
+const cloudTasksHeaderTaskPreviousResponse =
+    'X-CloudTasks-TaskPreviousResponse';
+
+/// Cloud Tasks header holding the reason for retrying the task.
+const cloudTasksHeaderTaskRetryReason = 'X-CloudTasks-TaskRetryReason';
+
+/// Admin SDK Tasks functions, i.e. functions triggered by a task enqueued in
+/// a Cloud Tasks queue.
+abstract class TasksFunctionsAdminSdk {
+  /// Registers a task dispatched handler.
+  ///
+  /// The resulting function must be registered on the functions instance to
+  /// get its name (the queue name):
+  /// ```dart
+  /// functions['my-task'] = functions.tasks.onTaskDispatched(myTaskHandler);
+  /// ```
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  });
+}
+
+/// Default mixin for [TasksFunctionsAdminSdk] implementations, every member
+/// throws an [UnimplementedError] unless overridden.
+mixin TasksFunctionsAdminSdkDefaultMixin implements TasksFunctionsAdminSdk {
+  @override
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  }) {
+    throw UnimplementedError('TasksFunctionsAdminSdk.onTaskDispatched');
+  }
+}
+
+/// Admin SDK task dispatched function.
+abstract class TaskFunctionAdminSdk implements FirebaseFunctionAdminSdk {}
+
+class _TasksAdminSdk
+    with TasksFunctionsAdminSdkDefaultMixin
+    implements TasksFunctionsAdminSdk {
+  final _FirebaseFunctionsAdminSdk _functions;
+
+  _TasksAdminSdk(this._functions);
+
+  @override
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  }) {
+    return _TaskFunctionAdminSdk(
+      tasksAdminSdk: this,
+      handler: handler,
+      options: options,
+    );
+  }
+}
+
+class _TaskFunctionAdminSdk implements TaskFunctionAdminSdk {
+  final _TasksAdminSdk tasksAdminSdk;
+  final FirebaseFunctionsAdminSdkTaskHandler handler;
+  final FirebaseFunctionsAdminSdkTaskQueueOptions? options;
+
+  _TaskFunctionAdminSdk({
+    required this.tasksAdminSdk,
+    required this.handler,
+    required this.options,
+  });
+
+  @override
+  void register(String name) {
+    var functions = tasksAdminSdk._functions;
+    // ignore: experimental_member_use
+    functions.rawFunctions.tasks.onTaskDispatched(
+      (request) async => await handler(functions, request),
+      // ignore: non_const_argument_for_const_parameter
+      name: name,
+      // ignore: non_const_argument_for_const_parameter
+      options: options ?? const fn.TaskQueueOptions(),
+    );
+  }
+}
 
 /// Admin SDK Scheduler functions.
 abstract class SchedulerFunctionsAdminSdk implements SchedulerFunctions {}
@@ -516,6 +653,24 @@ typedef FirebaseFunctionsAdminSdkInstances = fn.Instances;
 
 /// Native https namespace
 typedef FirebaseFunctionsAdminSdkHttpsNamespace = fn.HttpsNamespace;
+
+/// Native tasks namespace
+typedef FirebaseFunctionsAdminSdkTasksNamespace = fn.TasksNamespace;
+
+/// Native task request
+typedef FirebaseFunctionsAdminSdkTaskRequest<T> = fn.TaskRequest<T>;
+
+/// Native task auth data
+typedef FirebaseFunctionsAdminSdkTaskAuthData = fn.TaskAuthData;
+
+/// Native task queue options
+typedef FirebaseFunctionsAdminSdkTaskQueueOptions = fn.TaskQueueOptions;
+
+/// Native task queue retry config
+typedef FirebaseFunctionsAdminSdkTaskQueueRetryConfig = fn.TaskQueueRetryConfig;
+
+/// Native task queue rate limits
+typedef FirebaseFunctionsAdminSdkTaskQueueRateLimits = fn.TaskQueueRateLimits;
 
 /// Native TimeoutSeconds
 typedef FirebaseFunctionsAdminSdkTimeoutSeconds = fn.TimeoutSeconds;

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cv/cv_json.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_tasks_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 
@@ -14,6 +15,7 @@ import 'package:tekartik_http/http_client.dart';
 export 'package:tekartik_firebase_functions_test/functions_basic.dart';
 export 'src/constants.dart';
 export 'src/functions_basic_admin_sdk.dart';
+export 'src/task_record.dart';
 
 /// Auth users command
 /// Get the first 10 uids
@@ -24,6 +26,18 @@ const testApiCommandAuthMe = 'auth/me';
 
 /// Echo command
 const testApiCommandEcho = 'echo';
+
+/// Enqueue a task command.
+///
+/// Extra fields: `name` (the task function name), `region`, `uri` (the target
+/// url, needed on the emulator) and `data` (the task payload).
+const testApiCommandTasksEnqueue = 'tasks/enqueue';
+
+/// List the tasks received so far command.
+const testApiCommandTasksList = 'tasks/list';
+
+/// Clear the tasks received so far command.
+const testApiCommandTasksClear = 'tasks/clear';
 
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
@@ -38,6 +52,28 @@ void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
     '$prefix$testDartFunctionCallV1',
     functionsCallV1Handler,
   );
+  functions.tasks.onAdminSdkTaskDispatched(
+    '$prefix$testDartFunctionTaskV1',
+    functionsTaskV1Handler,
+  );
+}
+
+/// Handler for the test task dispatched function.
+///
+/// It records what it receives so that a test can check it (see
+/// [testTaskRecordList]).
+Future<void> functionsTaskV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  TaskRequest<Object?> request,
+) async {
+  await testTaskRecordAdd({
+    'data': ?request.data,
+    'queueName': request.queueName,
+    'id': request.id,
+    'retryCount': request.retryCount,
+    'executionCount': request.executionCount,
+    'authUid': ?request.auth?.uid,
+  });
 }
 
 /// Handler for the test call function.
@@ -73,6 +109,24 @@ Future<CallableResult<Model>> functionsCallV1Handler(
           return CallableResult(asModel({'uid': userId}));
         case testApiCommandEcho:
           return CallableResult(Model.from({'data': data}));
+        case testApiCommandTasksEnqueue:
+          var name = data['name'] as String? ?? testDartFunctionTaskV1;
+          var taskQueue = firebaseTasksServiceAdminSdk.taskQueue(
+            firebaseFunctions.app,
+            name,
+            region: data['region'] as String?,
+          );
+          await taskQueue.enqueue(
+            (data['data'] as Map?)?.cast<String, Object?>() ??
+                <String, Object?>{},
+            options: FirebaseTaskEnqueueOptions(uri: data['uri'] as String?),
+          );
+          return CallableResult(asModel({'enqueued': true}));
+        case testApiCommandTasksList:
+          return CallableResult(asModel({'tasks': await testTaskRecordList()}));
+        case testApiCommandTasksClear:
+          await testTaskRecordClear();
+          return CallableResult(asModel({'cleared': true}));
       }
     }
   }

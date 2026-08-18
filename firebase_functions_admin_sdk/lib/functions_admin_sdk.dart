@@ -13,7 +13,21 @@ export 'src/functions_admin_sdk.dart'
         FirebaseFunctionsAdminSdkFirebaseExt,
         FirebaseFunctionsAdminSdkRequestHandler,
         FirebaseFunctionsAdminSdkExt,
-        FirebaseFunctionsAdminSdkCallHandler;
+        FirebaseFunctionsAdminSdkCallHandler,
+        FirebaseFunctionsAdminSdkTaskHandler,
+        FirebaseFunctionsAdminSdkTaskQueueOptions,
+        FirebaseFunctionsAdminSdkTaskRequest,
+        TasksFunctionsAdminSdk,
+        TasksFunctionsAdminSdkDefaultMixin,
+        TaskFunctionAdminSdk,
+        taskDispatchedNoContentStatusCode,
+        cloudTasksHeaderQueueName,
+        cloudTasksHeaderTaskName,
+        cloudTasksHeaderTaskRetryCount,
+        cloudTasksHeaderTaskExecutionCount,
+        cloudTasksHeaderTaskEta,
+        cloudTasksHeaderTaskPreviousResponse,
+        cloudTasksHeaderTaskRetryReason;
 export 'src/https_error.dart'
     show
         FirebaseFunctionsHttpsError,

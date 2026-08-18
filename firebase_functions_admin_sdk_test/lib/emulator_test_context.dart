@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task_enqueue.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_firebase_functions_call/functions_call.dart';
 
@@ -52,6 +53,20 @@ class FirebaseFunctionsAdminSdkEmulatorTestContext
 
   @override
   var client = Client();
+
+  /// Enqueues a task using the admin sdk, from the test call function.
+  @override
+  Future<void> enqueueTask(
+    String functionName,
+    Map<String, Object?> data,
+  ) async {
+    await callFunctionEnqueueTask(
+      this,
+      functionName: functionName,
+      data: data,
+      region: region ?? regionUsCentral1,
+    );
+  }
 
   @override
   // TODO: implement signInInfo

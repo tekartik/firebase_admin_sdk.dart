@@ -31,6 +31,19 @@ void main(List<String> args) {
         region: Region(SupportedRegion.europeWest1),
       ),
     );
+    // Task dispatched function, enqueued through Cloud Tasks.
+    // ignore: experimental_member_use
+    firebase.tasks.onTaskDispatched(
+      firebase.taskHandler(functionsTaskV1Handler),
+      name: testDartFunctionTaskV1,
+      options: const TaskQueueOptions(
+        region: Region(SupportedRegion.europeWest1),
+        retryConfig: TaskQueueRetryConfig(maxAttempts: MaxAttempts(2)),
+        rateLimits: TaskQueueRateLimits(
+          maxConcurrentDispatches: MaxConcurrentDispatches(5),
+        ),
+      ),
+    );
     firebase.https.onCall(
       firebase.callHandler(callBasicAdminSdkHandler),
       name: 'adminsdkbasic',

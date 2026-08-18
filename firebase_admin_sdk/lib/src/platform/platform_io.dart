@@ -6,3 +6,5 @@ export 'package:tekartik_firebase_admin_sdk/src/firebase_firestore_admin_sdk.dar
     show firestoreServiceAdminSdk;
 export 'package:tekartik_firebase_admin_sdk/src/firebase_storage_admin_sdk.dart'
     show firebaseStorageServiceAdminSdk;
+export 'package:tekartik_firebase_admin_sdk/src/firebase_tasks_admin_sdk.dart'
+    show firebaseTasksServiceAdminSdk;

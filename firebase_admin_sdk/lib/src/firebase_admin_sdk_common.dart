@@ -13,6 +13,81 @@ abstract class FirebaseFirestoreServiceAdminSdk implements FirestoreService {}
 abstract class FirebaseStorageServiceAdminSdk
     implements FirebaseStorageService {}
 
+/// Options used when enqueuing a task, see [FirebaseTaskQueueAdminSdk.enqueue].
+class FirebaseTaskEnqueueOptions {
+  /// The id to use for the enqueued task, allowing de-duplication.
+  ///
+  /// When `null` one is generated. It can only contain letters (`[A-Za-z]`),
+  /// numbers (`[0-9]`), hyphens (`-`), or underscores (`_`).
+  final String? id;
+
+  /// The delay before the task is attempted, relative to now.
+  ///
+  /// Mutually exclusive with [scheduleTime].
+  final Duration? scheduleDelay;
+
+  /// The absolute time at which the task should be attempted.
+  ///
+  /// Mutually exclusive with [scheduleDelay].
+  final DateTime? scheduleTime;
+
+  /// The deadline for the request sent to the function, in seconds.
+  ///
+  /// Must be in the range of 15 seconds to 30 minutes (1800 seconds).
+  final int? dispatchDeadlineSeconds;
+
+  /// Extra http headers to send along the task request.
+  final Map<String, String>? headers;
+
+  /// The full url the task request is sent to.
+  ///
+  /// When `null`, the deployed function url is used. This is needed when
+  /// running against the Cloud Tasks emulator, which cannot resolve the
+  /// production function url.
+  final String? uri;
+
+  /// Creates the options to enqueue a task, every parameter is optional.
+  const FirebaseTaskEnqueueOptions({
+    this.id,
+    this.scheduleDelay,
+    this.scheduleTime,
+    this.dispatchDeadlineSeconds,
+    this.headers,
+    this.uri,
+  });
+}
+
+/// A reference to the Cloud Tasks queue of a task dispatched function.
+abstract class FirebaseTaskQueueAdminSdk {
+  /// Enqueues a task with the given [data] payload.
+  ///
+  /// [data] is json encoded and delivered to the task dispatched function as
+  /// its request data.
+  Future<void> enqueue(
+    Map<String, Object?> data, {
+    FirebaseTaskEnqueueOptions? options,
+  });
+
+  /// Deletes the not yet executed task [id] from the queue.
+  ///
+  /// Does nothing if the task does not exist.
+  Future<void> delete(String id);
+}
+
+/// Tasks (Cloud Tasks queues) service for admin sdk.
+///
+/// Used to enqueue tasks handled by a task dispatched cloud function.
+abstract class FirebaseTasksServiceAdminSdk {
+  /// The task queue of the function [functionName] deployed in [region].
+  ///
+  /// When [region] is null, the default location (`us-central1`) is used.
+  FirebaseTaskQueueAdminSdk taskQueue(
+    FirebaseApp app,
+    String functionName, {
+    String? region,
+  });
+}
+
 /// AdminSdk extension (if any)
 abstract class FirebaseAdminSdk implements Firebase, FirebaseAdmin {
   /// Initialize rest with a service account json map.

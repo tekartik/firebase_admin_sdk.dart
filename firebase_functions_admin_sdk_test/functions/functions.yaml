@@ -4,6 +4,8 @@ specVersion: v1alpha1
 requiredAPIs:
   - api: cloudfunctions.googleapis.com
     reason: Required for Cloud Functions
+  - api: cloudtasks.googleapis.com
+    reason: Needed for task queue functions
 endpoints:
   admin-sdk-https-v1:
     platform: gcfv2
@@ -25,6 +27,19 @@ endpoints:
     command:
       - ./bin/server
     entryPoint: admin-sdk-call-v1
+  admin-sdk-task-v1:
+    platform: gcfv2
+    region:
+      - europe-west1
+    taskQueueTrigger:
+      retryConfig:
+        maxAttempts: 2
+      rateLimits:
+        maxConcurrentDispatches: 5
+    baseImageUri: europe-west1-docker.pkg.dev/serverless-runtimes/google-24/runtimes/osonly24
+    command:
+      - ./bin/server
+    entryPoint: admin-sdk-task-v1
   adminsdkbasic:
     platform: gcfv2
     region:

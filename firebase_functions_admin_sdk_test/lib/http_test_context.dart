@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:path/path.dart';
+import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_firebase_functions_call/functions_call.dart';
@@ -53,6 +55,27 @@ class FirebaseFunctionsAdminSdkHttpTestContext
   @override
   Uri httpsUri(String path) =>
       _serverUri.replace(path: url.join(_serverUri.path, path));
+
+  /// Simulates a Cloud Tasks delivery on the local http server.
+  @override
+  Future<void> enqueueTask(
+    String functionName,
+    Map<String, Object?> data,
+  ) async {
+    var uri = httpsUri(functionName);
+    var response = await httpClientSend(
+      client,
+      httpMethodPost,
+      uri,
+      headers: (HttpHeaders()..mimeType = httpContentTypeJson).toStringMap(),
+      body: jsonEncode({'data': data}),
+    );
+    if (response.statusCode != taskDispatchedNoContentStatusCode) {
+      throw StateError(
+        'Enqueue task failed ${response.statusCode} ${response.body}',
+      );
+    }
+  }
 
   @override
   late final client = httpFactory.client.newClient();

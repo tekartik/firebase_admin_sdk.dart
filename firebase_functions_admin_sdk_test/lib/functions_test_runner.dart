@@ -217,3 +217,52 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
     expect(map['contentLength'], 2);
   });
 }
+
+/// Waits for at least [count] tasks to be received by the test task function.
+Future<List<Map<String, Object?>>> waitForReceivedTasks(
+  int count, {
+  Duration? timeout,
+}) async {
+  timeout ??= const Duration(seconds: 30);
+  var stopwatch = Stopwatch()..start();
+  while (true) {
+    var list = await testTaskRecordList();
+    if (list.length >= count) {
+      return list;
+    }
+    if (stopwatch.elapsed > timeout) {
+      throw StateError(
+        'Timeout waiting for $count task(s), got ${list.length}',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+}
+
+/// Test group for task dispatched functions.
+void functionsTaskGroup(FirebaseFunctionsAdminSdkTestContext context) {
+  setUpAll(() async {
+    await context.setUpAll();
+  });
+
+  test('task dispatched', () async {
+    await testTaskRecordClear();
+    var data = <String, Object?>{'test': 'task', 'value': 1};
+    await context.enqueueTask(testDartFunctionTaskV1, data);
+
+    var tasks = await waitForReceivedTasks(1);
+    // ignore: avoid_print
+    print('tasks: ${tasks.cvToJsonPretty()}');
+    expect(tasks, hasLength(1));
+    var task = tasks.first;
+    expect(task['data'], data);
+
+    /// The emulator sends its internal queue key
+    /// (`queue:<project>-<region>-<name>`), the local http server sends the
+    /// function name.
+    expect(task['queueName'], contains(testDartFunctionTaskV1));
+    expect(task['id'], isNotNull);
+    expect(task['retryCount'], 0);
+    expect(task['executionCount'], 0);
+  });
+}

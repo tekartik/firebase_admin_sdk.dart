@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
+import 'package:tekartik_common_utils/int_utils.dart';
 import 'package:tekartik_firebase/firebase.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_functions/firebase_functions.dart'
@@ -51,6 +52,9 @@ abstract class FirebaseFunctionsAdminSdkHttp
   @override
   HttpsFunctionsAdminSdkHttp get https;
 
+  @override
+  TasksFunctionsAdminSdkHttp get tasks;
+
   /// The underlying HTTP server.
   HttpServer get httpServer;
 }
@@ -67,6 +71,20 @@ abstract class HttpsFunctionsAdminSdkHttp implements HttpsFunctions {
   void onAdminSdkCall<T extends Object>(
     String name,
     FirebaseFunctionsAdminSdkCallHandler<T> handler,
+  );
+}
+
+/// Tasks functions interface for Admin SDK.
+///
+/// A task dispatched function is simulated as a callable-like function: a
+/// `POST` on the function url with a `{'data': ...}` json body (i.e. exactly
+/// what Cloud Tasks delivers) triggers the handler and responds with a
+/// `204 No Content` (or a `500` if the handler fails).
+abstract class TasksFunctionsAdminSdkHttp implements TasksFunctionsAdminSdk {
+  /// Registers an Admin SDK task dispatched handler.
+  void onAdminSdkTaskDispatched(
+    String name,
+    FirebaseFunctionsAdminSdkTaskHandler handler,
   );
 }
 
@@ -92,9 +110,15 @@ class _FirebaseFunctionsAdminSdkHttp
   @override
   late HttpServer httpServer;
   final _functions = <String, _HttpsBase>{};
+  var _lastTaskId = 0;
 
   @override
   late final HttpsFunctionsAdminSdkHttp https = _HttpsFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
+  @override
+  late final TasksFunctionsAdminSdkHttp tasks = _TasksFunctionsAdminSdkHttp(
     functions: this,
   );
 
@@ -247,6 +271,68 @@ class _FirebaseFunctionsAdminSdkHttp
                   await request.response.close();
                   return;
                 }*/
+              } else if (function is _HttpsTask) {
+                var headers = request.headers;
+                var userId = headers.value(firebaseFunctionsHttpHeaderUid);
+                var bodyBytes = await httpStreamGetBytes(request);
+                Object? data;
+                if (bodyBytes.isNotEmpty) {
+                  var json = jsonDecode(utf8.decode(bodyBytes));
+                  if (json is Map) {
+                    data = json['data'];
+                  }
+                }
+                var taskRequest = TaskRequest<Object?>(
+                  Request(
+                    request.method,
+                    request.requestedUri,
+                    headers: headers.toMap(),
+                  ),
+                  data,
+                  queueName:
+                      headers.value(cloudTasksHeaderQueueName) ?? function.name,
+                  id:
+                      headers.value(cloudTasksHeaderTaskName) ??
+                      '${++_lastTaskId}',
+                  retryCount:
+                      parseInt(headers.value(cloudTasksHeaderTaskRetryCount)) ??
+                      0,
+                  executionCount:
+                      parseInt(
+                        headers.value(cloudTasksHeaderTaskExecutionCount),
+                      ) ??
+                      0,
+                  scheduledTime:
+                      headers.value(cloudTasksHeaderTaskEta) ??
+                      DateTime.now().toUtc().toIso8601String(),
+                  previousResponse: parseInt(
+                    headers.value(cloudTasksHeaderTaskPreviousResponse),
+                  ),
+                  retryReason: headers.value(cloudTasksHeaderTaskRetryReason),
+                  auth: userId == null ? null : TaskAuthData(uid: userId),
+                );
+                try {
+                  await function.handler(this, taskRequest);
+                  // No content, as done by the native implementation.
+                  request.response.statusCode =
+                      taskDispatchedNoContentStatusCode;
+                  await request.response.close();
+                } catch (e) {
+                  var error = HttpResponseException.internalServerError(
+                    message: 'INTERNAL',
+                    details: [
+                      {'exception': '$e'},
+                    ],
+                  );
+                  var response = request.response;
+                  response.statusCode = error.statusCode;
+                  response.headers.set(
+                    'Content-Type',
+                    'application/json; charset=utf-8',
+                  );
+                  response.write(jsonEncode(error.toJson()));
+                  await response.close();
+                }
               }
               /*
             if (function is HttpsFunctionHttp) {
@@ -315,6 +401,28 @@ class _HttpsCall extends _HttpsBase {
   final FirebaseFunctionsAdminSdkCallHandler<Object> handler;
 
   _HttpsCall({required super.name, required this.handler});
+}
+
+class _HttpsTask extends _HttpsBase {
+  final FirebaseFunctionsAdminSdkTaskHandler handler;
+
+  _HttpsTask({required super.name, required this.handler});
+}
+
+class _TasksFunctionsAdminSdkHttp
+    with TasksFunctionsAdminSdkDefaultMixin
+    implements TasksFunctionsAdminSdkHttp {
+  final _FirebaseFunctionsAdminSdkHttp functions;
+
+  _TasksFunctionsAdminSdkHttp({required this.functions});
+
+  @override
+  void onAdminSdkTaskDispatched(
+    String name,
+    FirebaseFunctionsAdminSdkTaskHandler handler,
+  ) {
+    functions._functions[name] = _HttpsTask(name: name, handler: handler);
+  }
 }
 
 class _HttpsFunctionsAdminSdkHttp

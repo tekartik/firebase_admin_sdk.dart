@@ -13,6 +13,12 @@ abstract class FirebaseFunctionsAdminSdkTestContext {
   /// Gets the HTTPS URI for the given path.
   Uri httpsUri(String path);
 
+  /// Enqueues a task on the task dispatched function [functionName].
+  ///
+  /// Depending on the context, it either goes through Cloud Tasks (emulator)
+  /// or simulates a Cloud Tasks delivery (local http server).
+  Future<void> enqueueTask(String functionName, Map<String, Object?> data);
+
   /// HTTP client used to perform requests.
   Client get client;
 

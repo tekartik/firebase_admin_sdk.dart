@@ -68,6 +68,9 @@ Future main() async {
     group('call', () {
       functionsCallGroup(testContext);
     });
+    group('tasks', () {
+      functionsTaskGroup(testContext);
+    });
     basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
