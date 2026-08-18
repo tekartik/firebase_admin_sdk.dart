@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cv/cv_json.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_pubsub_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_tasks_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
 import 'package:tekartik_firebase_firestore/firestore.dart';
@@ -46,6 +47,23 @@ const testApiCommandTasksFirestoreList = 'tasks/firestore/list';
 /// Clear the tasks received so far in firestore command.
 const testApiCommandTasksFirestoreClear = 'tasks/firestore/clear';
 
+/// Publish a pub/sub message command.
+///
+/// Extra fields: `topic` and `data` (the message payload).
+const testApiCommandPubsubPublish = 'pubsub/publish';
+
+/// List the pub/sub messages received so far command.
+const testApiCommandPubsubList = 'pubsub/list';
+
+/// Clear the pub/sub messages received so far command.
+const testApiCommandPubsubClear = 'pubsub/clear';
+
+/// List the pub/sub messages received so far in firestore command.
+const testApiCommandPubsubFirestoreList = 'pubsub/firestore/list';
+
+/// Clear the pub/sub messages received so far in firestore command.
+const testApiCommandPubsubFirestoreClear = 'pubsub/firestore/clear';
+
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
   prefix ??= '';
@@ -67,6 +85,55 @@ void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
     '$prefix$testDartFunctionTaskFirestoreV1',
     functionsTaskFirestoreV1Handler,
   );
+  functions.pubsub.onAdminSdkMessagePublished(
+    '$prefix$testDartFunctionPubsubV1',
+    topic: testDartPubsubTopicV1,
+    handler: functionsPubsubV1Handler,
+  );
+  functions.pubsub.onAdminSdkMessagePublished(
+    '$prefix$testDartFunctionPubsubFirestoreV1',
+    topic: testDartPubsubTopicFirestoreV1,
+    handler: functionsPubsubFirestoreV1Handler,
+  );
+}
+
+/// The information recorded for a received pub/sub message.
+Map<String, Object?> pubsubEventToMap(CloudEvent<PubsubMessage> event) {
+  var message = event.data!;
+  return {
+    'data': message.jsonData,
+    'attributes': message.attributes,
+    'messageId': message.messageId,
+    'source': event.source,
+  };
+}
+
+/// Handler for the test pub/sub function.
+///
+/// It records what it receives so that a test can check it (see
+/// [testPubsubRecordList]).
+Future<void> functionsPubsubV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  CloudEvent<PubsubMessage> event,
+) async {
+  await testPubsubRecordAdd(pubsubEventToMap(event));
+}
+
+/// Handler for the test pub/sub function recording in firestore.
+///
+/// Unlike [functionsPubsubV1Handler], the received messages are recorded in
+/// firestore (in [testPubsubFirestoreCollectionPath]), so that they can be
+/// read even when the functions do not run on the test machine.
+Future<void> functionsPubsubFirestoreV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  CloudEvent<PubsubMessage> event,
+) async {
+  var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+  var message = event.data!;
+  await firestore
+      .collection(testPubsubFirestoreCollectionPath)
+      .doc(message.messageId)
+      .set(pubsubEventToMap(event));
 }
 
 /// The information recorded for a received task.
@@ -177,6 +244,42 @@ Future<CallableResult<Model>> functionsCallV1Handler(
           return CallableResult(
             asModel({'tasks': snapshot.docs.map((doc) => doc.data).toList()}),
           );
+        case testApiCommandPubsubPublish:
+          var topic = firebasePubsubServiceAdminSdk.topic(
+            firebaseFunctions.app,
+            data['topic'] as String? ?? testDartPubsubTopicV1,
+          );
+          var messageId = await topic.publish(
+            (data['data'] as Map?)?.cast<String, Object?>() ??
+                <String, Object?>{},
+          );
+          return CallableResult(asModel({'messageId': messageId}));
+        case testApiCommandPubsubList:
+          return CallableResult(
+            asModel({'messages': await testPubsubRecordList()}),
+          );
+        case testApiCommandPubsubClear:
+          await testPubsubRecordClear();
+          return CallableResult(asModel({'cleared': true}));
+        case testApiCommandPubsubFirestoreList:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testPubsubFirestoreCollectionPath)
+              .get();
+          return CallableResult(
+            asModel({
+              'messages': snapshot.docs.map((doc) => doc.data).toList(),
+            }),
+          );
+        case testApiCommandPubsubFirestoreClear:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testPubsubFirestoreCollectionPath)
+              .get();
+          for (var doc in snapshot.docs) {
+            await doc.ref.delete();
+          }
+          return CallableResult(asModel({'cleared': true}));
         case testApiCommandTasksFirestoreClear:
           var firestore = firebaseFunctionsFirestore(firebaseFunctions);
           var snapshot = await firestore

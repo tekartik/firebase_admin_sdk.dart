@@ -34,6 +34,7 @@ Future main() async {
       onlyFunctions: true,
       onlyAuth: true,
       onlyFirestore: true,
+      onlyPubsub: true,
       projectId: fbProjectId,
       debug: false,
     ),
@@ -74,6 +75,12 @@ Future main() async {
     });
     group('tasks firestore', () {
       functionsTaskFirestoreGroup(testContext);
+    });
+    group('pubsub', () {
+      functionsPubsubGroup(testContext);
+    });
+    group('pubsub firestore', () {
+      functionsPubsubFirestoreGroup(testContext);
     });
     basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));

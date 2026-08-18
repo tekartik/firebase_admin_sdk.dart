@@ -56,6 +56,19 @@ void main(List<String> args) {
         retryConfig: TaskQueueRetryConfig(maxAttempts: MaxAttempts(2)),
       ),
     );
+    // Pub/Sub triggered functions.
+    // ignore: experimental_member_use
+    firebase.pubsub.onMessagePublished(
+      firebase.pubsubHandler(functionsPubsubV1Handler),
+      topic: testDartPubsubTopicV1,
+      options: const PubSubOptions(region: Region(SupportedRegion.europeWest1)),
+    );
+    // ignore: experimental_member_use
+    firebase.pubsub.onMessagePublished(
+      firebase.pubsubHandler(functionsPubsubFirestoreV1Handler),
+      topic: testDartPubsubTopicFirestoreV1,
+      options: const PubSubOptions(region: Region(SupportedRegion.europeWest1)),
+    );
     firebase.https.onCall(
       firebase.callHandler(callBasicAdminSdkHandler),
       name: 'adminsdkbasic',

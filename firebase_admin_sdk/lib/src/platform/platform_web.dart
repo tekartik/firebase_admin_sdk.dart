@@ -1,6 +1,7 @@
 /*import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_storage_admin_sdk.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_pubsub_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_tasks_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firestore_admin_sdk.dart';
 */
@@ -31,3 +32,12 @@ FirebaseTasksServiceAdminSdk get firebaseTasksServiceAdminSdk =>
     throw UnsupportedError(
       'firebaseTasksServiceAdminSdk is not supported on web',
     );
+
+/// Pub/Sub service for admin sdk.
+FirebasePubsubServiceAdminSdk get firebasePubsubServiceAdminSdk =>
+    throw UnsupportedError(
+      'firebasePubsubServiceAdminSdk is not supported on web',
+    );
+
+/// Pub/Sub emulator host, always null on the web.
+String? get pubsubEmulatorHost => null;

@@ -74,6 +74,54 @@ abstract class FirebaseTaskQueueAdminSdk {
   Future<void> delete(String id);
 }
 
+/// Options used when publishing a message, see
+/// [FirebasePubsubTopicAdminSdk.publish].
+class FirebasePubsubPublishOptions {
+  /// Attributes for this message (key-value pairs).
+  final Map<String, String>? attributes;
+
+  /// Ordering key for this message.
+  final String? orderingKey;
+
+  /// Creates the options to publish a message, every parameter is optional.
+  const FirebasePubsubPublishOptions({this.attributes, this.orderingKey});
+}
+
+/// A reference to a Pub/Sub topic.
+abstract class FirebasePubsubTopicAdminSdk {
+  /// The topic name (its short name, not the full resource name).
+  String get name;
+
+  /// Creates the topic, does nothing if it already exists.
+  Future<void> createIfNeeded();
+
+  /// Publishes [data], json encoded, and returns the message id.
+  Future<String> publish(
+    Map<String, Object?> data, {
+    FirebasePubsubPublishOptions? options,
+  });
+
+  /// Publishes [text] and returns the message id.
+  Future<String> publishText(
+    String text, {
+    FirebasePubsubPublishOptions? options,
+  });
+
+  /// Publishes [bytes] and returns the message id.
+  Future<String> publishBytes(
+    List<int> bytes, {
+    FirebasePubsubPublishOptions? options,
+  });
+}
+
+/// Pub/Sub (topics) service for admin sdk.
+///
+/// Used to publish messages handled by a pub/sub triggered cloud function.
+abstract class FirebasePubsubServiceAdminSdk {
+  /// The topic [topicName] of the app project.
+  FirebasePubsubTopicAdminSdk topic(FirebaseApp app, String topicName);
+}
+
 /// Tasks (Cloud Tasks queues) service for admin sdk.
 ///
 /// Used to enqueue tasks handled by a task dispatched cloud function.

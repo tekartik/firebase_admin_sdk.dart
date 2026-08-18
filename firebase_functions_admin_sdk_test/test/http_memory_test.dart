@@ -51,5 +51,11 @@ Future main() async {
     group('tasks firestore', () {
       functionsTaskFirestoreGroup(testContext);
     });
+    group('pubsub', () {
+      functionsPubsubGroup(testContext);
+    });
+    group('pubsub firestore', () {
+      functionsPubsubFirestoreGroup(testContext);
+    });
   });
 }

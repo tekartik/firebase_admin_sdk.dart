@@ -49,6 +49,12 @@ class FirebaseFunctionsAdminSdkDeployedTestContext
     this.region,
   }) : httpClientFactory = httpClientFactoryUniversal;
 
+  /// Publishes a message using the admin sdk, from the test call function.
+  @override
+  Future<void> publishMessage(String topic, Map<String, Object?> data) async {
+    await callFunctionPublishMessage(this, topic: topic, data: data);
+  }
+
   /// Enqueues a task using the admin sdk, from the test call function.
   @override
   Future<void> enqueueTask(

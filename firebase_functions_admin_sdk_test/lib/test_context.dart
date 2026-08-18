@@ -13,6 +13,12 @@ abstract class FirebaseFunctionsAdminSdkTestContext {
   /// Gets the HTTPS URI for the given path.
   Uri httpsUri(String path);
 
+  /// Publishes a message on [topic].
+  ///
+  /// Depending on the context, it either goes through Pub/Sub (emulator) or
+  /// simulates a Pub/Sub delivery (local http server).
+  Future<void> publishMessage(String topic, Map<String, Object?> data);
+
   /// Enqueues a task on the task dispatched function [functionName].
   ///
   /// Depending on the context, it either goes through Cloud Tasks (emulator)

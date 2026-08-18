@@ -49,6 +49,46 @@ Future<void> callFunctionEnqueueTask(
   });
 }
 
+/// Publishes a message through the test call function.
+///
+/// The call function runs with the admin sdk credentials, so it can publish
+/// on the topic. This is how a message is published when the functions are
+/// not run locally (emulator, deployed).
+Future<void> callFunctionPublishMessage(
+  FirebaseFunctionsAdminSdkTestContext context, {
+  required String topic,
+  required Map<String, Object?> data,
+}) async {
+  await callFunctionCommand(context, {
+    'command': testApiCommandPubsubPublish,
+    'topic': topic,
+    'data': data,
+  });
+}
+
+/// The pub/sub messages recorded in firestore, read through the test call
+/// function.
+Future<List<Map<String, Object?>>> callFunctionPubsubFirestoreList(
+  FirebaseFunctionsAdminSdkTestContext context,
+) async {
+  var result = await callFunctionCommand(context, {
+    'command': testApiCommandPubsubFirestoreList,
+  });
+  return ((result['messages'] as List?) ?? [])
+      .map((item) => (item as Map).cast<String, Object?>())
+      .toList();
+}
+
+/// Clears the pub/sub messages recorded in firestore, through the test call
+/// function.
+Future<void> callFunctionPubsubFirestoreClear(
+  FirebaseFunctionsAdminSdkTestContext context,
+) async {
+  await callFunctionCommand(context, {
+    'command': testApiCommandPubsubFirestoreClear,
+  });
+}
+
 /// The tasks recorded in firestore, read through the test call function.
 Future<List<Map<String, Object?>>> callFunctionTasksFirestoreList(
   FirebaseFunctionsAdminSdkTestContext context,

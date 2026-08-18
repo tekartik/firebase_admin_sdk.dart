@@ -55,6 +55,9 @@ abstract class FirebaseFunctionsAdminSdkHttp
   @override
   TasksFunctionsAdminSdkHttp get tasks;
 
+  @override
+  PubsubFunctionsAdminSdkHttp get pubsub;
+
   /// The underlying HTTP server.
   HttpServer get httpServer;
 }
@@ -88,6 +91,25 @@ abstract class TasksFunctionsAdminSdkHttp implements TasksFunctionsAdminSdk {
   );
 }
 
+/// Pub/Sub functions interface for Admin SDK.
+///
+/// A pub/sub triggered function is simulated as an http function: a `POST` on
+/// the function url with a cloud event json body (i.e. exactly what Pub/Sub
+/// delivers, see [pubsubMessagePublishedCloudEventJson]) triggers the handler.
+abstract class PubsubFunctionsAdminSdkHttp implements PubsubFunctionsAdminSdk {
+  /// Registers an Admin SDK message published handler on [topic].
+  void onAdminSdkMessagePublished(
+    String name, {
+    required String topic,
+    required FirebaseFunctionsAdminSdkPubsubHandler handler,
+  });
+
+  /// The name of the local function registered for [topic].
+  ///
+  /// Throws a [StateError] if no function is registered for [topic].
+  String functionNameForTopic(String topic);
+}
+
 class _FirebaseFunctionsAdminSdkHttp
     with
         FirebaseFunctionsDefaultMixin,
@@ -119,6 +141,11 @@ class _FirebaseFunctionsAdminSdkHttp
 
   @override
   late final TasksFunctionsAdminSdkHttp tasks = _TasksFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
+  @override
+  late final PubsubFunctionsAdminSdkHttp pubsub = _PubsubFunctionsAdminSdkHttp(
     functions: this,
   );
 
@@ -318,20 +345,22 @@ class _FirebaseFunctionsAdminSdkHttp
                       taskDispatchedNoContentStatusCode;
                   await request.response.close();
                 } catch (e) {
-                  var error = HttpResponseException.internalServerError(
-                    message: 'INTERNAL',
-                    details: [
-                      {'exception': '$e'},
-                    ],
-                  );
-                  var response = request.response;
-                  response.statusCode = error.statusCode;
-                  response.headers.set(
-                    'Content-Type',
-                    'application/json; charset=utf-8',
-                  );
-                  response.write(jsonEncode(error.toJson()));
-                  await response.close();
+                  await _sendInternalError(request, e);
+                }
+              } else if (function is _HttpsPubsub) {
+                var bodyBytes = await httpStreamGetBytes(request);
+                var json =
+                    jsonDecode(utf8.decode(bodyBytes)) as Map<String, Object?>;
+                var event = CloudEvent<PubsubMessage>.fromJson(
+                  json.cast<String, dynamic>(),
+                  PubsubMessage.fromJson,
+                );
+                try {
+                  await function.handler(this, event);
+                  request.response.statusCode = httpStatusCodeOk;
+                  await request.response.close();
+                } catch (e) {
+                  await _sendInternalError(request, e);
                 }
               }
               /*
@@ -385,6 +414,20 @@ class _FirebaseFunctionsAdminSdkHttp
   }
 }
 
+Future<void> _sendInternalError(HttpRequest request, Object e) async {
+  var error = HttpResponseException.internalServerError(
+    message: 'INTERNAL',
+    details: [
+      {'exception': '$e'},
+    ],
+  );
+  var response = request.response;
+  response.statusCode = error.statusCode;
+  response.headers.set('Content-Type', 'application/json; charset=utf-8');
+  response.write(jsonEncode(error.toJson()));
+  await response.close();
+}
+
 abstract class _HttpsBase {
   final String name;
 
@@ -407,6 +450,48 @@ class _HttpsTask extends _HttpsBase {
   final FirebaseFunctionsAdminSdkTaskHandler handler;
 
   _HttpsTask({required super.name, required this.handler});
+}
+
+class _HttpsPubsub extends _HttpsBase {
+  final FirebaseFunctionsAdminSdkPubsubHandler handler;
+  final String topic;
+
+  _HttpsPubsub({
+    required super.name,
+    required this.topic,
+    required this.handler,
+  });
+}
+
+class _PubsubFunctionsAdminSdkHttp
+    with PubsubFunctionsAdminSdkDefaultMixin
+    implements PubsubFunctionsAdminSdkHttp {
+  final _FirebaseFunctionsAdminSdkHttp functions;
+
+  _PubsubFunctionsAdminSdkHttp({required this.functions});
+
+  @override
+  void onAdminSdkMessagePublished(
+    String name, {
+    required String topic,
+    required FirebaseFunctionsAdminSdkPubsubHandler handler,
+  }) {
+    functions._functions[name] = _HttpsPubsub(
+      name: name,
+      topic: topic,
+      handler: handler,
+    );
+  }
+
+  @override
+  String functionNameForTopic(String topic) {
+    for (var function in functions._functions.values) {
+      if (function is _HttpsPubsub && function.topic == topic) {
+        return function.name;
+      }
+    }
+    throw StateError('No pub/sub function registered for topic $topic');
+  }
 }
 
 class _TasksFunctionsAdminSdkHttp

@@ -321,3 +321,101 @@ void functionsTaskFirestoreGroup(FirebaseFunctionsAdminSdkTestContext context) {
     expect(task['executionCount'], 0);
   });
 }
+
+/// Waits for at least [count] pub/sub messages to be received by the test
+/// pub/sub function.
+Future<List<Map<String, Object?>>> waitForReceivedMessages(
+  int count, {
+  Duration? timeout,
+}) async {
+  timeout ??= const Duration(seconds: 30);
+  var stopwatch = Stopwatch()..start();
+  while (true) {
+    var list = await testPubsubRecordList();
+    if (list.length >= count) {
+      return list;
+    }
+    if (stopwatch.elapsed > timeout) {
+      throw StateError(
+        'Timeout waiting for $count message(s), got ${list.length}',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+}
+
+/// Test group for pub/sub triggered functions.
+void functionsPubsubGroup(FirebaseFunctionsAdminSdkTestContext context) {
+  setUpAll(() async {
+    await context.setUpAll();
+  });
+
+  test('message published', () async {
+    await testPubsubRecordClear();
+    var data = <String, Object?>{'test': 'message', 'value': 1};
+    await context.publishMessage(testDartPubsubTopicV1, data);
+
+    var messages = await waitForReceivedMessages(1);
+    // ignore: avoid_print
+    print('messages: ${messages.cvToJsonPretty()}');
+    expect(messages, hasLength(1));
+    var message = messages.first;
+    expect(message['data'], data);
+    expect(message['messageId'], isNotNull);
+    expect(message['source'], contains(testDartPubsubTopicV1));
+  });
+}
+
+/// Waits for at least [count] pub/sub messages to be recorded in firestore.
+Future<List<Map<String, Object?>>> waitForFirestoreMessages(
+  FirebaseFunctionsAdminSdkTestContext context,
+  int count, {
+  Duration? timeout,
+}) async {
+  timeout ??= const Duration(seconds: 30);
+  var stopwatch = Stopwatch()..start();
+  while (true) {
+    var list = await callFunctionPubsubFirestoreList(context);
+    if (list.length >= count) {
+      return list;
+    }
+    if (stopwatch.elapsed > timeout) {
+      throw StateError(
+        'Timeout waiting for $count firestore message(s), got ${list.length}',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+}
+
+/// Test group for pub/sub triggered functions recording in firestore.
+///
+/// Same as [functionsPubsubGroup] but the received messages are recorded in
+/// firestore (and read back through the test call function) instead of a
+/// local file, so it also works when the functions do not run on the test
+/// machine.
+///
+/// A firestore must be registered on the functions app (in the emulator, the
+/// firestore emulator must be started too).
+void functionsPubsubFirestoreGroup(
+  FirebaseFunctionsAdminSdkTestContext context,
+) {
+  setUpAll(() async {
+    await context.setUpAll();
+  });
+
+  test('message published firestore', () async {
+    await callFunctionPubsubFirestoreClear(context);
+    var data = <String, Object?>{'test': 'firestore message', 'value': 2};
+    await context.publishMessage(testDartPubsubTopicFirestoreV1, data);
+
+    var messages = await waitForFirestoreMessages(context, 1);
+    // ignore: avoid_print
+    print('firestore messages: ${messages.cvToJsonPretty()}');
+    expect(messages, hasLength(1));
+    var message = messages.first;
+    expect(message['data'], data);
+    expect(message['messageId'], isNotNull);
+    expect(message['source'], contains(testDartPubsubTopicFirestoreV1));
+  });
+}
