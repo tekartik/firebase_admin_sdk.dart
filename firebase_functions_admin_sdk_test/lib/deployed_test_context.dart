@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:tekartik_app_http/app_http.dart';
-import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task_enqueue.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 
 /// HTTP test context for Firebase Functions Admin SDK.

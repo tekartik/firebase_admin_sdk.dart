@@ -5,6 +5,7 @@ import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_tasks_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
+import 'package:tekartik_firebase_firestore/firestore.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
@@ -39,6 +40,12 @@ const testApiCommandTasksList = 'tasks/list';
 /// Clear the tasks received so far command.
 const testApiCommandTasksClear = 'tasks/clear';
 
+/// List the tasks received so far in firestore command.
+const testApiCommandTasksFirestoreList = 'tasks/firestore/list';
+
+/// Clear the tasks received so far in firestore command.
+const testApiCommandTasksFirestoreClear = 'tasks/firestore/clear';
+
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
   prefix ??= '';
@@ -56,6 +63,48 @@ void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
     '$prefix$testDartFunctionTaskV1',
     functionsTaskV1Handler,
   );
+  functions.tasks.onAdminSdkTaskDispatched(
+    '$prefix$testDartFunctionTaskFirestoreV1',
+    functionsTaskFirestoreV1Handler,
+  );
+}
+
+/// The information recorded for a received task.
+Map<String, Object?> taskRequestToMap(TaskRequest<Object?> request) => {
+  'data': ?request.data,
+  'queueName': request.queueName,
+  'id': request.id,
+  'retryCount': request.retryCount,
+  'executionCount': request.executionCount,
+  'authUid': ?request.auth?.uid,
+};
+
+/// The firestore of the functions app.
+///
+/// It must have been initialized (`firestoreServiceAdminSdk.firestore(app)`)
+/// when running on the admin sdk.
+Firestore firebaseFunctionsFirestore(FirebaseFunctions firebaseFunctions) {
+  var firestore = firebaseFunctions.app.getProduct<Firestore>();
+  if (firestore == null) {
+    throw StateError('No firestore registered on ${firebaseFunctions.app}');
+  }
+  return firestore;
+}
+
+/// Handler for the test task dispatched function recording in firestore.
+///
+/// Unlike [functionsTaskV1Handler], the received tasks are recorded in
+/// firestore (in [testTasksFirestoreCollectionPath]), so that they can be
+/// read even when the functions do not run on the test machine.
+Future<void> functionsTaskFirestoreV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  TaskRequest<Object?> request,
+) async {
+  var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+  await firestore
+      .collection(testTasksFirestoreCollectionPath)
+      .doc(request.id)
+      .set(taskRequestToMap(request));
 }
 
 /// Handler for the test task dispatched function.
@@ -66,14 +115,7 @@ Future<void> functionsTaskV1Handler(
   FirebaseFunctions firebaseFunctions,
   TaskRequest<Object?> request,
 ) async {
-  await testTaskRecordAdd({
-    'data': ?request.data,
-    'queueName': request.queueName,
-    'id': request.id,
-    'retryCount': request.retryCount,
-    'executionCount': request.executionCount,
-    'authUid': ?request.auth?.uid,
-  });
+  await testTaskRecordAdd(taskRequestToMap(request));
 }
 
 /// Handler for the test call function.
@@ -126,6 +168,23 @@ Future<CallableResult<Model>> functionsCallV1Handler(
           return CallableResult(asModel({'tasks': await testTaskRecordList()}));
         case testApiCommandTasksClear:
           await testTaskRecordClear();
+          return CallableResult(asModel({'cleared': true}));
+        case testApiCommandTasksFirestoreList:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testTasksFirestoreCollectionPath)
+              .get();
+          return CallableResult(
+            asModel({'tasks': snapshot.docs.map((doc) => doc.data).toList()}),
+          );
+        case testApiCommandTasksFirestoreClear:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testTasksFirestoreCollectionPath)
+              .get();
+          for (var doc in snapshot.docs) {
+            await doc.ref.delete();
+          }
           return CallableResult(asModel({'cleared': true}));
       }
     }

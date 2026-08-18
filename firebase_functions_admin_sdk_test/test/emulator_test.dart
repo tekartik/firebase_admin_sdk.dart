@@ -33,6 +33,7 @@ Future main() async {
     emulatorOptions: FirebaseEmulatorOptions(
       onlyFunctions: true,
       onlyAuth: true,
+      onlyFirestore: true,
       projectId: fbProjectId,
       debug: false,
     ),
@@ -70,6 +71,9 @@ Future main() async {
     });
     group('tasks', () {
       functionsTaskGroup(testContext);
+    });
+    group('tasks firestore', () {
+      functionsTaskFirestoreGroup(testContext);
     });
     basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));

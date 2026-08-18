@@ -5,6 +5,7 @@ import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_http/http.dart';
 
 import 'functions.dart';
+import 'src/call_task.dart';
 
 extension on Uri {
   Uri withInfo() => replace(queryParameters: {'info': 'true'});
@@ -261,6 +262,60 @@ void functionsTaskGroup(FirebaseFunctionsAdminSdkTestContext context) {
     /// (`queue:<project>-<region>-<name>`), the local http server sends the
     /// function name.
     expect(task['queueName'], contains(testDartFunctionTaskV1));
+    expect(task['id'], isNotNull);
+    expect(task['retryCount'], 0);
+    expect(task['executionCount'], 0);
+  });
+}
+
+/// Waits for at least [count] tasks to be recorded in firestore.
+Future<List<Map<String, Object?>>> waitForFirestoreTasks(
+  FirebaseFunctionsAdminSdkTestContext context,
+  int count, {
+  Duration? timeout,
+}) async {
+  timeout ??= const Duration(seconds: 30);
+  var stopwatch = Stopwatch()..start();
+  while (true) {
+    var list = await callFunctionTasksFirestoreList(context);
+    if (list.length >= count) {
+      return list;
+    }
+    if (stopwatch.elapsed > timeout) {
+      throw StateError(
+        'Timeout waiting for $count firestore task(s), got ${list.length}',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+}
+
+/// Test group for task dispatched functions recording in firestore.
+///
+/// Same as [functionsTaskGroup] but the received tasks are recorded in
+/// firestore (and read back through the test call function) instead of a
+/// local file, so it also works when the functions do not run on the test
+/// machine.
+///
+/// A firestore must be registered on the functions app (in the emulator,
+/// the firestore emulator must be started too).
+void functionsTaskFirestoreGroup(FirebaseFunctionsAdminSdkTestContext context) {
+  setUpAll(() async {
+    await context.setUpAll();
+  });
+
+  test('task dispatched firestore', () async {
+    await callFunctionTasksFirestoreClear(context);
+    var data = <String, Object?>{'test': 'firestore task', 'value': 2};
+    await context.enqueueTask(testDartFunctionTaskFirestoreV1, data);
+
+    var tasks = await waitForFirestoreTasks(context, 1);
+    // ignore: avoid_print
+    print('firestore tasks: ${tasks.cvToJsonPretty()}');
+    expect(tasks, hasLength(1));
+    var task = tasks.first;
+    expect(task['data'], data);
+    expect(task['queueName'], contains(testDartFunctionTaskFirestoreV1));
     expect(task['id'], isNotNull);
     expect(task['retryCount'], 0);
     expect(task['executionCount'], 0);

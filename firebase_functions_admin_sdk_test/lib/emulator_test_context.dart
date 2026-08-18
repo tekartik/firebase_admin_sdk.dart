@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart';
 import 'package:path/path.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
-import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task_enqueue.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_firebase_functions_call/functions_call.dart';
 

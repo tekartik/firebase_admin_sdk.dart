@@ -1,4 +1,5 @@
 import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
+import 'package:tekartik_firebase_admin_sdk/firestore_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/functions.dart';
 
@@ -9,6 +10,7 @@ void main(List<String> args) {
     // Init needed services
     var app = firebase.firebaseApp;
     firebaseAuthServiceAdminSdk.auth(app);
+    firestoreServiceAdminSdk.firestore(app);
 
     // https://firebase.google.com/docs/functions/http-events
     firebase.https.onRequest(
@@ -42,6 +44,16 @@ void main(List<String> args) {
         rateLimits: TaskQueueRateLimits(
           maxConcurrentDispatches: MaxConcurrentDispatches(5),
         ),
+      ),
+    );
+    // Task dispatched function recording in firestore.
+    // ignore: experimental_member_use
+    firebase.tasks.onTaskDispatched(
+      firebase.taskHandler(functionsTaskFirestoreV1Handler),
+      name: testDartFunctionTaskFirestoreV1,
+      options: const TaskQueueOptions(
+        region: Region(SupportedRegion.europeWest1),
+        retryConfig: TaskQueueRetryConfig(maxAttempts: MaxAttempts(2)),
       ),
     );
     firebase.https.onCall(
