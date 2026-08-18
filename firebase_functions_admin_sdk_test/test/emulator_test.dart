@@ -33,6 +33,8 @@ Future main() async {
     emulatorOptions: FirebaseEmulatorOptions(
       onlyFunctions: true,
       onlyAuth: true,
+      onlyFirestore: true,
+      onlyPubsub: true,
       projectId: fbProjectId,
       debug: false,
     ),
@@ -67,6 +69,18 @@ Future main() async {
     });
     group('call', () {
       functionsCallGroup(testContext);
+    });
+    group('tasks', () {
+      functionsTaskGroup(testContext);
+    });
+    group('tasks firestore', () {
+      functionsTaskFirestoreGroup(testContext);
+    });
+    group('pubsub', () {
+      functionsPubsubGroup(testContext);
+    });
+    group('pubsub firestore', () {
+      functionsPubsubFirestoreGroup(testContext);
     });
     basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));

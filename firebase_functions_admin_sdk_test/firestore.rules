@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the admin sdk (which bypasses the rules) is used in the tests.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

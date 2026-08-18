@@ -25,7 +25,14 @@ abstract class FirebaseFunctionsServiceAdminSdk
 }
 
 /// Admin SDK Firebase Functions instance.
-abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {}
+abstract class FirebaseFunctionsAdminSdk implements FirebaseFunctions {
+  /// Task queue (`onTaskDispatched`) functions.
+  TasksFunctionsAdminSdk get tasks;
+
+  /// Pub/Sub (`onMessagePublished`) functions.
+  @override
+  PubsubFunctionsAdminSdk get pubsub;
+}
 
 /// Request handler
 typedef FirebaseFunctionsAdminSdkRequestHandler =
@@ -40,6 +47,24 @@ typedef FirebaseFunctionsAdminSdkCallHandler<T extends Object> =
       FirebaseFunctions firebaseFunctions,
       fn.CallableRequest<Object?> request,
       fn.CallableResponse<T> response,
+    );
+
+/// Pub/Sub message published handler.
+///
+/// Handles a message published on a topic (see `onMessagePublished`).
+typedef FirebaseFunctionsAdminSdkPubsubHandler =
+    Future<void> Function(
+      FirebaseFunctions firebaseFunctions,
+      fn.CloudEvent<fn.PubsubMessage> event,
+    );
+
+/// Task dispatched handler.
+///
+/// Handles a task enqueued in a Cloud Tasks queue (see `onTaskDispatched`).
+typedef FirebaseFunctionsAdminSdkTaskHandler =
+    Future<void> Function(
+      FirebaseFunctions firebaseFunctions,
+      fn.TaskRequest<Object?> request,
     );
 
 /// Extension on native implementation
@@ -76,6 +101,48 @@ extension FirebaseFunctionsAdminSdkFirebaseExt on fn.Firebase {
         rawFunctions: this,
       );
       return await handler.call(ff, request, response);
+    };
+  }
+
+  /// Pub/Sub message published handler.
+  ///
+  /// To use with the native `pubsub.onMessagePublished`:
+  /// ```dart
+  /// firebase.pubsub.onMessagePublished(
+  ///   firebase.pubsubHandler(myPubsubHandler),
+  ///   topic: 'my-topic',
+  /// );
+  /// ```
+  Future<void> Function(fn.CloudEvent<fn.PubsubMessage> event) pubsubHandler(
+    FirebaseFunctionsAdminSdkPubsubHandler handler,
+  ) {
+    return (event) async {
+      var ff = _FirebaseFunctionsAdminSdk(
+        service: firebaseFunctionsServiceAdminSdk._impl,
+        rawFunctions: this,
+      );
+      await handler.call(ff, event);
+    };
+  }
+
+  /// Task dispatched handler.
+  ///
+  /// To use with the native `tasks.onTaskDispatched`:
+  /// ```dart
+  /// firebase.tasks.onTaskDispatched(
+  ///   firebase.taskHandler(myTaskHandler),
+  ///   name: 'my-task',
+  /// );
+  /// ```
+  Future<void> Function(fn.TaskRequest<Object?> request) taskHandler(
+    FirebaseFunctionsAdminSdkTaskHandler handler,
+  ) {
+    return (request) async {
+      var ff = _FirebaseFunctionsAdminSdk(
+        service: firebaseFunctionsServiceAdminSdk._impl,
+        rawFunctions: this,
+      );
+      await handler.call(ff, request);
     };
   }
 }
@@ -219,6 +286,12 @@ class _FirebaseFunctionsAdminSdk
   @override
   late final SchedulerFunctionsAdminSdk scheduler = _SchedulerAdminSdk(this);
 
+  @override
+  late final TasksFunctionsAdminSdk tasks = _TasksAdminSdk(this);
+
+  @override
+  late final PubsubFunctionsAdminSdk pubsub = _PubsubAdminSdk(this);
+
   /// register a function
   @override
   void operator []=(String key, FirebaseFunction function) {
@@ -287,6 +360,239 @@ abstract class HttpsFunctionAdminSdk
 /// Admin SDK Https callable function.
 abstract class HttpsCallableFunctionAdminSdk
     implements FirebaseFunctionAdminSdk, HttpsCallableFunction {}
+
+/// The cloud event type of a pub/sub message published event.
+const pubsubMessagePublishedEventType =
+    'google.cloud.pubsub.topic.v1.messagePublished';
+
+/// Builds the cloud event json body delivered to a pub/sub triggered function.
+///
+/// [data] is the raw (base64 encoded) message data. Used to simulate a
+/// message publication, the real one being done by Pub/Sub itself.
+Map<String, Object?> pubsubMessagePublishedCloudEventJson({
+  required String projectId,
+  required String topic,
+  required String data,
+  Map<String, String>? attributes,
+  String? orderingKey,
+  String? messageId,
+  String? eventId,
+  DateTime? publishTime,
+}) {
+  var time = (publishTime ?? DateTime.now().toUtc()).toIso8601String();
+  messageId ??= '1';
+  return {
+    'specversion': '1.0',
+    'id': eventId ?? messageId,
+    'source': '//pubsub.googleapis.com/projects/$projectId/topics/$topic',
+    'type': pubsubMessagePublishedEventType,
+    'time': time,
+    'data': {
+      'message': {
+        'data': data,
+        'attributes': attributes ?? <String, String>{},
+        'messageId': messageId,
+        'publishTime': time,
+        'orderingKey': ?orderingKey,
+      },
+      'subscription': 'projects/$projectId/subscriptions/emulator-sub-$topic',
+    },
+  };
+}
+
+/// Admin SDK Pub/Sub functions, i.e. functions triggered by a message
+/// published on a topic.
+abstract class PubsubFunctionsAdminSdk implements PubsubFunctions {
+  /// Registers a message published handler on [topic].
+  ///
+  /// The resulting function must be registered on the functions instance:
+  /// ```dart
+  /// functions['my-fn'] = functions.pubsub.onMessagePublished(
+  ///   myPubsubHandler,
+  ///   topic: 'my-topic',
+  /// );
+  /// ```
+  PubsubFunctionAdminSdk onMessagePublished(
+    FirebaseFunctionsAdminSdkPubsubHandler handler, {
+    required String topic,
+    FirebaseFunctionsAdminSdkPubsubOptions? options,
+  });
+}
+
+/// Default mixin for [PubsubFunctionsAdminSdk] implementations, every member
+/// throws an [UnimplementedError] unless overridden.
+mixin PubsubFunctionsAdminSdkDefaultMixin implements PubsubFunctionsAdminSdk {
+  @override
+  PubsubFunctionAdminSdk onMessagePublished(
+    FirebaseFunctionsAdminSdkPubsubHandler handler, {
+    required String topic,
+    FirebaseFunctionsAdminSdkPubsubOptions? options,
+  }) {
+    throw UnimplementedError('PubsubFunctionsAdminSdk.onMessagePublished');
+  }
+
+  @Deprecated('Use scheduler from firebase functions')
+  @override
+  ScheduleBuilder schedule(String expression) =>
+      throw UnimplementedError('PubsubFunctions.schedule');
+}
+
+/// Admin SDK pub/sub message published function.
+abstract class PubsubFunctionAdminSdk
+    implements FirebaseFunctionAdminSdk, PubsubFunction {}
+
+class _PubsubAdminSdk
+    with PubsubFunctionsAdminSdkDefaultMixin
+    implements PubsubFunctionsAdminSdk {
+  final _FirebaseFunctionsAdminSdk _functions;
+
+  _PubsubAdminSdk(this._functions);
+
+  @override
+  PubsubFunctionAdminSdk onMessagePublished(
+    FirebaseFunctionsAdminSdkPubsubHandler handler, {
+    required String topic,
+    FirebaseFunctionsAdminSdkPubsubOptions? options,
+  }) {
+    return _PubsubFunctionAdminSdk(
+      pubsubAdminSdk: this,
+      handler: handler,
+      topic: topic,
+      options: options,
+    );
+  }
+}
+
+class _PubsubFunctionAdminSdk implements PubsubFunctionAdminSdk {
+  final _PubsubAdminSdk pubsubAdminSdk;
+  final FirebaseFunctionsAdminSdkPubsubHandler handler;
+  final String topic;
+  final FirebaseFunctionsAdminSdkPubsubOptions? options;
+
+  _PubsubFunctionAdminSdk({
+    required this.pubsubAdminSdk,
+    required this.handler,
+    required this.topic,
+    required this.options,
+  });
+
+  @override
+  void register(String name) {
+    // The underlying Admin SDK derives the deployed function name from the
+    // topic itself, so [name] is only used to key the function in the local
+    // registry and has no effect on the deployed name.
+    var functions = pubsubAdminSdk._functions;
+    // ignore: experimental_member_use
+    functions.rawFunctions.pubsub.onMessagePublished(
+      (event) async => await handler(functions, event),
+      // ignore: non_const_argument_for_const_parameter
+      topic: topic,
+      // ignore: non_const_argument_for_const_parameter
+      options: options ?? const fn.PubSubOptions(),
+    );
+  }
+}
+
+/// The status code (no content) returned by a task dispatched function.
+const taskDispatchedNoContentStatusCode = 204;
+
+/// Cloud Tasks header holding the name of the queue.
+const cloudTasksHeaderQueueName = 'X-CloudTasks-QueueName';
+
+/// Cloud Tasks header holding the "short" name of the task.
+const cloudTasksHeaderTaskName = 'X-CloudTasks-TaskName';
+
+/// Cloud Tasks header holding the number of times the task has been retried.
+const cloudTasksHeaderTaskRetryCount = 'X-CloudTasks-TaskRetryCount';
+
+/// Cloud Tasks header holding the number of times the task has been executed.
+const cloudTasksHeaderTaskExecutionCount = 'X-CloudTasks-TaskExecutionCount';
+
+/// Cloud Tasks header holding the schedule time of the task.
+const cloudTasksHeaderTaskEta = 'X-CloudTasks-TaskETA';
+
+/// Cloud Tasks header holding the response code of the previous retry.
+const cloudTasksHeaderTaskPreviousResponse =
+    'X-CloudTasks-TaskPreviousResponse';
+
+/// Cloud Tasks header holding the reason for retrying the task.
+const cloudTasksHeaderTaskRetryReason = 'X-CloudTasks-TaskRetryReason';
+
+/// Admin SDK Tasks functions, i.e. functions triggered by a task enqueued in
+/// a Cloud Tasks queue.
+abstract class TasksFunctionsAdminSdk {
+  /// Registers a task dispatched handler.
+  ///
+  /// The resulting function must be registered on the functions instance to
+  /// get its name (the queue name):
+  /// ```dart
+  /// functions['my-task'] = functions.tasks.onTaskDispatched(myTaskHandler);
+  /// ```
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  });
+}
+
+/// Default mixin for [TasksFunctionsAdminSdk] implementations, every member
+/// throws an [UnimplementedError] unless overridden.
+mixin TasksFunctionsAdminSdkDefaultMixin implements TasksFunctionsAdminSdk {
+  @override
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  }) {
+    throw UnimplementedError('TasksFunctionsAdminSdk.onTaskDispatched');
+  }
+}
+
+/// Admin SDK task dispatched function.
+abstract class TaskFunctionAdminSdk implements FirebaseFunctionAdminSdk {}
+
+class _TasksAdminSdk
+    with TasksFunctionsAdminSdkDefaultMixin
+    implements TasksFunctionsAdminSdk {
+  final _FirebaseFunctionsAdminSdk _functions;
+
+  _TasksAdminSdk(this._functions);
+
+  @override
+  TaskFunctionAdminSdk onTaskDispatched(
+    FirebaseFunctionsAdminSdkTaskHandler handler, {
+    FirebaseFunctionsAdminSdkTaskQueueOptions? options,
+  }) {
+    return _TaskFunctionAdminSdk(
+      tasksAdminSdk: this,
+      handler: handler,
+      options: options,
+    );
+  }
+}
+
+class _TaskFunctionAdminSdk implements TaskFunctionAdminSdk {
+  final _TasksAdminSdk tasksAdminSdk;
+  final FirebaseFunctionsAdminSdkTaskHandler handler;
+  final FirebaseFunctionsAdminSdkTaskQueueOptions? options;
+
+  _TaskFunctionAdminSdk({
+    required this.tasksAdminSdk,
+    required this.handler,
+    required this.options,
+  });
+
+  @override
+  void register(String name) {
+    var functions = tasksAdminSdk._functions;
+    // ignore: experimental_member_use
+    functions.rawFunctions.tasks.onTaskDispatched(
+      (request) async => await handler(functions, request),
+      // ignore: non_const_argument_for_const_parameter
+      name: name,
+      // ignore: non_const_argument_for_const_parameter
+      options: options ?? const fn.TaskQueueOptions(),
+    );
+  }
+}
 
 /// Admin SDK Scheduler functions.
 abstract class SchedulerFunctionsAdminSdk implements SchedulerFunctions {}
@@ -516,6 +822,36 @@ typedef FirebaseFunctionsAdminSdkInstances = fn.Instances;
 
 /// Native https namespace
 typedef FirebaseFunctionsAdminSdkHttpsNamespace = fn.HttpsNamespace;
+
+/// Native tasks namespace
+typedef FirebaseFunctionsAdminSdkTasksNamespace = fn.TasksNamespace;
+
+/// Native pub/sub namespace
+typedef FirebaseFunctionsAdminSdkPubsubNamespace = fn.PubSubNamespace;
+
+/// Native pub/sub message
+typedef FirebaseFunctionsAdminSdkPubsubMessage = fn.PubsubMessage;
+
+/// Native cloud event
+typedef FirebaseFunctionsAdminSdkCloudEvent<T> = fn.CloudEvent<T>;
+
+/// Native pub/sub options
+typedef FirebaseFunctionsAdminSdkPubsubOptions = fn.PubSubOptions;
+
+/// Native task request
+typedef FirebaseFunctionsAdminSdkTaskRequest<T> = fn.TaskRequest<T>;
+
+/// Native task auth data
+typedef FirebaseFunctionsAdminSdkTaskAuthData = fn.TaskAuthData;
+
+/// Native task queue options
+typedef FirebaseFunctionsAdminSdkTaskQueueOptions = fn.TaskQueueOptions;
+
+/// Native task queue retry config
+typedef FirebaseFunctionsAdminSdkTaskQueueRetryConfig = fn.TaskQueueRetryConfig;
+
+/// Native task queue rate limits
+typedef FirebaseFunctionsAdminSdkTaskQueueRateLimits = fn.TaskQueueRateLimits;
 
 /// Native TimeoutSeconds
 typedef FirebaseFunctionsAdminSdkTimeoutSeconds = fn.TimeoutSeconds;

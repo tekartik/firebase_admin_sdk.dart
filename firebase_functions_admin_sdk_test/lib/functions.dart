@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import 'package:cv/cv_json.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/common_utils_import.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_pubsub_admin_sdk.dart';
+import 'package:tekartik_firebase_admin_sdk/firebase_tasks_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth.dart';
+import 'package:tekartik_firebase_firestore/firestore.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
@@ -14,6 +17,7 @@ import 'package:tekartik_http/http_client.dart';
 export 'package:tekartik_firebase_functions_test/functions_basic.dart';
 export 'src/constants.dart';
 export 'src/functions_basic_admin_sdk.dart';
+export 'src/task_record.dart';
 
 /// Auth users command
 /// Get the first 10 uids
@@ -24,6 +28,41 @@ const testApiCommandAuthMe = 'auth/me';
 
 /// Echo command
 const testApiCommandEcho = 'echo';
+
+/// Enqueue a task command.
+///
+/// Extra fields: `name` (the task function name), `region`, `uri` (the target
+/// url, needed on the emulator) and `data` (the task payload).
+const testApiCommandTasksEnqueue = 'tasks/enqueue';
+
+/// List the tasks received so far command.
+const testApiCommandTasksList = 'tasks/list';
+
+/// Clear the tasks received so far command.
+const testApiCommandTasksClear = 'tasks/clear';
+
+/// List the tasks received so far in firestore command.
+const testApiCommandTasksFirestoreList = 'tasks/firestore/list';
+
+/// Clear the tasks received so far in firestore command.
+const testApiCommandTasksFirestoreClear = 'tasks/firestore/clear';
+
+/// Publish a pub/sub message command.
+///
+/// Extra fields: `topic` and `data` (the message payload).
+const testApiCommandPubsubPublish = 'pubsub/publish';
+
+/// List the pub/sub messages received so far command.
+const testApiCommandPubsubList = 'pubsub/list';
+
+/// Clear the pub/sub messages received so far command.
+const testApiCommandPubsubClear = 'pubsub/clear';
+
+/// List the pub/sub messages received so far in firestore command.
+const testApiCommandPubsubFirestoreList = 'pubsub/firestore/list';
+
+/// Clear the pub/sub messages received so far in firestore command.
+const testApiCommandPubsubFirestoreClear = 'pubsub/firestore/clear';
 
 /// Declares the HTTP runner for admin SDK test functions.
 void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
@@ -38,6 +77,112 @@ void declareRunner(FirebaseFunctionsAdminSdkHttp functions, {String? prefix}) {
     '$prefix$testDartFunctionCallV1',
     functionsCallV1Handler,
   );
+  functions.tasks.onAdminSdkTaskDispatched(
+    '$prefix$testDartFunctionTaskV1',
+    functionsTaskV1Handler,
+  );
+  functions.tasks.onAdminSdkTaskDispatched(
+    '$prefix$testDartFunctionTaskFirestoreV1',
+    functionsTaskFirestoreV1Handler,
+  );
+  functions.pubsub.onAdminSdkMessagePublished(
+    '$prefix$testDartFunctionPubsubV1',
+    topic: testDartPubsubTopicV1,
+    handler: functionsPubsubV1Handler,
+  );
+  functions.pubsub.onAdminSdkMessagePublished(
+    '$prefix$testDartFunctionPubsubFirestoreV1',
+    topic: testDartPubsubTopicFirestoreV1,
+    handler: functionsPubsubFirestoreV1Handler,
+  );
+}
+
+/// The information recorded for a received pub/sub message.
+Map<String, Object?> pubsubEventToMap(CloudEvent<PubsubMessage> event) {
+  var message = event.data!;
+  return {
+    'data': message.jsonData,
+    'attributes': message.attributes,
+    'messageId': message.messageId,
+    'source': event.source,
+  };
+}
+
+/// Handler for the test pub/sub function.
+///
+/// It records what it receives so that a test can check it (see
+/// [testPubsubRecordList]).
+Future<void> functionsPubsubV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  CloudEvent<PubsubMessage> event,
+) async {
+  await testPubsubRecordAdd(pubsubEventToMap(event));
+}
+
+/// Handler for the test pub/sub function recording in firestore.
+///
+/// Unlike [functionsPubsubV1Handler], the received messages are recorded in
+/// firestore (in [testPubsubFirestoreCollectionPath]), so that they can be
+/// read even when the functions do not run on the test machine.
+Future<void> functionsPubsubFirestoreV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  CloudEvent<PubsubMessage> event,
+) async {
+  var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+  var message = event.data!;
+  await firestore
+      .collection(testPubsubFirestoreCollectionPath)
+      .doc(message.messageId)
+      .set(pubsubEventToMap(event));
+}
+
+/// The information recorded for a received task.
+Map<String, Object?> taskRequestToMap(TaskRequest<Object?> request) => {
+  'data': ?request.data,
+  'queueName': request.queueName,
+  'id': request.id,
+  'retryCount': request.retryCount,
+  'executionCount': request.executionCount,
+  'authUid': ?request.auth?.uid,
+};
+
+/// The firestore of the functions app.
+///
+/// It must have been initialized (`firestoreServiceAdminSdk.firestore(app)`)
+/// when running on the admin sdk.
+Firestore firebaseFunctionsFirestore(FirebaseFunctions firebaseFunctions) {
+  var firestore = firebaseFunctions.app.getProduct<Firestore>();
+  if (firestore == null) {
+    throw StateError('No firestore registered on ${firebaseFunctions.app}');
+  }
+  return firestore;
+}
+
+/// Handler for the test task dispatched function recording in firestore.
+///
+/// Unlike [functionsTaskV1Handler], the received tasks are recorded in
+/// firestore (in [testTasksFirestoreCollectionPath]), so that they can be
+/// read even when the functions do not run on the test machine.
+Future<void> functionsTaskFirestoreV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  TaskRequest<Object?> request,
+) async {
+  var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+  await firestore
+      .collection(testTasksFirestoreCollectionPath)
+      .doc(request.id)
+      .set(taskRequestToMap(request));
+}
+
+/// Handler for the test task dispatched function.
+///
+/// It records what it receives so that a test can check it (see
+/// [testTaskRecordList]).
+Future<void> functionsTaskV1Handler(
+  FirebaseFunctions firebaseFunctions,
+  TaskRequest<Object?> request,
+) async {
+  await testTaskRecordAdd(taskRequestToMap(request));
 }
 
 /// Handler for the test call function.
@@ -73,6 +218,77 @@ Future<CallableResult<Model>> functionsCallV1Handler(
           return CallableResult(asModel({'uid': userId}));
         case testApiCommandEcho:
           return CallableResult(Model.from({'data': data}));
+        case testApiCommandTasksEnqueue:
+          var name = data['name'] as String? ?? testDartFunctionTaskV1;
+          var taskQueue = firebaseTasksServiceAdminSdk.taskQueue(
+            firebaseFunctions.app,
+            name,
+            region: data['region'] as String?,
+          );
+          await taskQueue.enqueue(
+            (data['data'] as Map?)?.cast<String, Object?>() ??
+                <String, Object?>{},
+            options: FirebaseTaskEnqueueOptions(uri: data['uri'] as String?),
+          );
+          return CallableResult(asModel({'enqueued': true}));
+        case testApiCommandTasksList:
+          return CallableResult(asModel({'tasks': await testTaskRecordList()}));
+        case testApiCommandTasksClear:
+          await testTaskRecordClear();
+          return CallableResult(asModel({'cleared': true}));
+        case testApiCommandTasksFirestoreList:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testTasksFirestoreCollectionPath)
+              .get();
+          return CallableResult(
+            asModel({'tasks': snapshot.docs.map((doc) => doc.data).toList()}),
+          );
+        case testApiCommandPubsubPublish:
+          var topic = firebasePubsubServiceAdminSdk.topic(
+            firebaseFunctions.app,
+            data['topic'] as String? ?? testDartPubsubTopicV1,
+          );
+          var messageId = await topic.publish(
+            (data['data'] as Map?)?.cast<String, Object?>() ??
+                <String, Object?>{},
+          );
+          return CallableResult(asModel({'messageId': messageId}));
+        case testApiCommandPubsubList:
+          return CallableResult(
+            asModel({'messages': await testPubsubRecordList()}),
+          );
+        case testApiCommandPubsubClear:
+          await testPubsubRecordClear();
+          return CallableResult(asModel({'cleared': true}));
+        case testApiCommandPubsubFirestoreList:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testPubsubFirestoreCollectionPath)
+              .get();
+          return CallableResult(
+            asModel({
+              'messages': snapshot.docs.map((doc) => doc.data).toList(),
+            }),
+          );
+        case testApiCommandPubsubFirestoreClear:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testPubsubFirestoreCollectionPath)
+              .get();
+          for (var doc in snapshot.docs) {
+            await doc.ref.delete();
+          }
+          return CallableResult(asModel({'cleared': true}));
+        case testApiCommandTasksFirestoreClear:
+          var firestore = firebaseFunctionsFirestore(firebaseFunctions);
+          var snapshot = await firestore
+              .collection(testTasksFirestoreCollectionPath)
+              .get();
+          for (var doc in snapshot.docs) {
+            await doc.ref.delete();
+          }
+          return CallableResult(asModel({'cleared': true}));
       }
     }
   }

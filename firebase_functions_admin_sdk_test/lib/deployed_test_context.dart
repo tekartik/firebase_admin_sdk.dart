@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:tekartik_app_http/app_http.dart';
+import 'package:tekartik_firebase_functions_admin_sdk_test/src/call_task.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 
 /// HTTP test context for Firebase Functions Admin SDK.
@@ -13,6 +14,9 @@ class FirebaseFunctionsAdminSdkDeployedTestContext
 
   /// The HTTP factory.
   final HttpClientFactory httpClientFactory;
+
+  /// Region of the deployed functions.
+  final String? region;
 
   @override
   Future<void> setUpAll() async {
@@ -40,8 +44,30 @@ class FirebaseFunctionsAdminSdkDeployedTestContext
   late final client = httpClientFactory.newClient();
 
   /// Creates an HTTP test context.
-  FirebaseFunctionsAdminSdkDeployedTestContext({required this.urlSuffix})
-    : httpClientFactory = httpClientFactoryUniversal;
+  FirebaseFunctionsAdminSdkDeployedTestContext({
+    required this.urlSuffix,
+    this.region,
+  }) : httpClientFactory = httpClientFactoryUniversal;
+
+  /// Publishes a message using the admin sdk, from the test call function.
+  @override
+  Future<void> publishMessage(String topic, Map<String, Object?> data) async {
+    await callFunctionPublishMessage(this, topic: topic, data: data);
+  }
+
+  /// Enqueues a task using the admin sdk, from the test call function.
+  @override
+  Future<void> enqueueTask(
+    String functionName,
+    Map<String, Object?> data,
+  ) async {
+    await callFunctionEnqueueTask(
+      this,
+      functionName: functionName,
+      data: data,
+      region: region,
+    );
+  }
 
   @override
   // TODO: implement signInInfo

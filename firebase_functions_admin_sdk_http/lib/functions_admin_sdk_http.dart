@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart';
 import 'package:tekartik_common_utils/byte_utils.dart';
+import 'package:tekartik_common_utils/int_utils.dart';
 import 'package:tekartik_firebase/firebase.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
 import 'package:tekartik_firebase_functions/firebase_functions.dart'
@@ -51,6 +52,12 @@ abstract class FirebaseFunctionsAdminSdkHttp
   @override
   HttpsFunctionsAdminSdkHttp get https;
 
+  @override
+  TasksFunctionsAdminSdkHttp get tasks;
+
+  @override
+  PubsubFunctionsAdminSdkHttp get pubsub;
+
   /// The underlying HTTP server.
   HttpServer get httpServer;
 }
@@ -68,6 +75,39 @@ abstract class HttpsFunctionsAdminSdkHttp implements HttpsFunctions {
     String name,
     FirebaseFunctionsAdminSdkCallHandler<T> handler,
   );
+}
+
+/// Tasks functions interface for Admin SDK.
+///
+/// A task dispatched function is simulated as a callable-like function: a
+/// `POST` on the function url with a `{'data': ...}` json body (i.e. exactly
+/// what Cloud Tasks delivers) triggers the handler and responds with a
+/// `204 No Content` (or a `500` if the handler fails).
+abstract class TasksFunctionsAdminSdkHttp implements TasksFunctionsAdminSdk {
+  /// Registers an Admin SDK task dispatched handler.
+  void onAdminSdkTaskDispatched(
+    String name,
+    FirebaseFunctionsAdminSdkTaskHandler handler,
+  );
+}
+
+/// Pub/Sub functions interface for Admin SDK.
+///
+/// A pub/sub triggered function is simulated as an http function: a `POST` on
+/// the function url with a cloud event json body (i.e. exactly what Pub/Sub
+/// delivers, see [pubsubMessagePublishedCloudEventJson]) triggers the handler.
+abstract class PubsubFunctionsAdminSdkHttp implements PubsubFunctionsAdminSdk {
+  /// Registers an Admin SDK message published handler on [topic].
+  void onAdminSdkMessagePublished(
+    String name, {
+    required String topic,
+    required FirebaseFunctionsAdminSdkPubsubHandler handler,
+  });
+
+  /// The name of the local function registered for [topic].
+  ///
+  /// Throws a [StateError] if no function is registered for [topic].
+  String functionNameForTopic(String topic);
 }
 
 class _FirebaseFunctionsAdminSdkHttp
@@ -92,9 +132,20 @@ class _FirebaseFunctionsAdminSdkHttp
   @override
   late HttpServer httpServer;
   final _functions = <String, _HttpsBase>{};
+  var _lastTaskId = 0;
 
   @override
   late final HttpsFunctionsAdminSdkHttp https = _HttpsFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
+  @override
+  late final TasksFunctionsAdminSdkHttp tasks = _TasksFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
+  @override
+  late final PubsubFunctionsAdminSdkHttp pubsub = _PubsubFunctionsAdminSdkHttp(
     functions: this,
   );
 
@@ -244,6 +295,70 @@ class _FirebaseFunctionsAdminSdkHttp
                   await request.response.close();
                   return;
                 }*/
+              } else if (function is _HttpsTask) {
+                var headers = request.headers;
+                var userId = headers.value(firebaseFunctionsHttpHeaderUid);
+                var bodyBytes = await httpStreamGetBytes(request);
+                Object? data;
+                if (bodyBytes.isNotEmpty) {
+                  var json = jsonDecode(utf8.decode(bodyBytes));
+                  if (json is Map) {
+                    data = json['data'];
+                  }
+                }
+                var taskRequest = TaskRequest<Object?>(
+                  Request(
+                    request.method,
+                    request.requestedUri,
+                    headers: headers.toMap(),
+                  ),
+                  data,
+                  queueName:
+                      headers.value(cloudTasksHeaderQueueName) ?? function.name,
+                  id:
+                      headers.value(cloudTasksHeaderTaskName) ??
+                      '${++_lastTaskId}',
+                  retryCount:
+                      parseInt(headers.value(cloudTasksHeaderTaskRetryCount)) ??
+                      0,
+                  executionCount:
+                      parseInt(
+                        headers.value(cloudTasksHeaderTaskExecutionCount),
+                      ) ??
+                      0,
+                  scheduledTime:
+                      headers.value(cloudTasksHeaderTaskEta) ??
+                      DateTime.now().toUtc().toIso8601String(),
+                  previousResponse: parseInt(
+                    headers.value(cloudTasksHeaderTaskPreviousResponse),
+                  ),
+                  retryReason: headers.value(cloudTasksHeaderTaskRetryReason),
+                  auth: userId == null ? null : TaskAuthData(uid: userId),
+                );
+                try {
+                  await function.handler(this, taskRequest);
+                  // No content, as done by the native implementation.
+                  request.response.statusCode =
+                      taskDispatchedNoContentStatusCode;
+                  await request.response.close();
+                } catch (e) {
+                  await _sendInternalError(request, e);
+                }
+              } else if (function is _HttpsPubsub) {
+                var bodyBytes = await httpStreamGetBytes(request);
+                var json =
+                    jsonDecode(utf8.decode(bodyBytes)) as Map<String, Object?>;
+                var event = CloudEvent<PubsubMessage>.fromJson(
+                  json.cast<String, dynamic>(),
+                  PubsubMessage.fromJson,
+                );
+                try {
+                  await function.handler(this, event);
+                  request.response.statusCode = httpStatusCodeOk;
+                  await request.response.close();
+                } catch (e) {
+                  await _sendInternalError(request, e);
+                }
               }
               /*
             if (function is HttpsFunctionHttp) {
@@ -296,6 +411,15 @@ class _FirebaseFunctionsAdminSdkHttp
   }
 }
 
+Future<void> _sendInternalError(HttpRequest request, Object e) async {
+  var error = InternalError('INTERNAL', {'exception': '$e'});
+  var response = request.response;
+  response.statusCode = error.httpStatusCode;
+  response.headers.set('Content-Type', 'application/json; charset=utf-8');
+  response.write(jsonEncode(error.toErrorResponse()));
+  await response.close();
+}
+
 abstract class _HttpsBase {
   final String name;
 
@@ -312,6 +436,70 @@ class _HttpsCall extends _HttpsBase {
   final FirebaseFunctionsAdminSdkCallHandler<Object> handler;
 
   _HttpsCall({required super.name, required this.handler});
+}
+
+class _HttpsTask extends _HttpsBase {
+  final FirebaseFunctionsAdminSdkTaskHandler handler;
+
+  _HttpsTask({required super.name, required this.handler});
+}
+
+class _HttpsPubsub extends _HttpsBase {
+  final FirebaseFunctionsAdminSdkPubsubHandler handler;
+  final String topic;
+
+  _HttpsPubsub({
+    required super.name,
+    required this.topic,
+    required this.handler,
+  });
+}
+
+class _PubsubFunctionsAdminSdkHttp
+    with PubsubFunctionsAdminSdkDefaultMixin
+    implements PubsubFunctionsAdminSdkHttp {
+  final _FirebaseFunctionsAdminSdkHttp functions;
+
+  _PubsubFunctionsAdminSdkHttp({required this.functions});
+
+  @override
+  void onAdminSdkMessagePublished(
+    String name, {
+    required String topic,
+    required FirebaseFunctionsAdminSdkPubsubHandler handler,
+  }) {
+    functions._functions[name] = _HttpsPubsub(
+      name: name,
+      topic: topic,
+      handler: handler,
+    );
+  }
+
+  @override
+  String functionNameForTopic(String topic) {
+    for (var function in functions._functions.values) {
+      if (function is _HttpsPubsub && function.topic == topic) {
+        return function.name;
+      }
+    }
+    throw StateError('No pub/sub function registered for topic $topic');
+  }
+}
+
+class _TasksFunctionsAdminSdkHttp
+    with TasksFunctionsAdminSdkDefaultMixin
+    implements TasksFunctionsAdminSdkHttp {
+  final _FirebaseFunctionsAdminSdkHttp functions;
+
+  _TasksFunctionsAdminSdkHttp({required this.functions});
+
+  @override
+  void onAdminSdkTaskDispatched(
+    String name,
+    FirebaseFunctionsAdminSdkTaskHandler handler,
+  ) {
+    functions._functions[name] = _HttpsTask(name: name, handler: handler);
+  }
 }
 
 class _HttpsFunctionsAdminSdkHttp
