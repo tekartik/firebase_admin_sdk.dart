@@ -149,16 +149,6 @@ class _FirebaseFunctionsAdminSdkHttp
     functions: this,
   );
 
-  @override
-  late final TasksFunctionsAdminSdkHttp tasks = _TasksFunctionsAdminSdkHttp(
-    functions: this,
-  );
-
-  @override
-  late final PubsubFunctionsAdminSdkHttp pubsub = _PubsubFunctionsAdminSdkHttp(
-    functions: this,
-  );
-
   Future<HttpServer> serveHttp({int? port}) async {
     port ??= firebaseFunctionsHttpDefaultPort;
     var requestServer = await httpServerFactory.bind(
