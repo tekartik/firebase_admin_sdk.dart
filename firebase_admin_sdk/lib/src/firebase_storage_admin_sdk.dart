@@ -96,10 +96,14 @@ class BucketAdminSdk with BucketMixin implements Bucket {
   @override
   Future<bool> exists() async {
     try {
-      await nativeInstance.metadata();
-      return true;
+      var metadata = await nativeInstance.metadata();
+      // print('metadata: $metadata');
+      return metadata.timeCreated != null;
     } on sdk.NotFoundException {
       return false;
+    } catch (_) {
+      // print('error getting metadata $name: $e');
+      rethrow;
     }
   }
 

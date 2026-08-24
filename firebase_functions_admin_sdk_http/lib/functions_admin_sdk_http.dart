@@ -149,6 +149,16 @@ class _FirebaseFunctionsAdminSdkHttp
     functions: this,
   );
 
+  @override
+  late final TasksFunctionsAdminSdkHttp tasks = _TasksFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
+  @override
+  late final PubsubFunctionsAdminSdkHttp pubsub = _PubsubFunctionsAdminSdkHttp(
+    functions: this,
+  );
+
   Future<HttpServer> serveHttp({int? port}) async {
     port ??= firebaseFunctionsHttpDefaultPort;
     var requestServer = await httpServerFactory.bind(
@@ -239,14 +249,14 @@ class _FirebaseFunctionsAdminSdkHttp
 
                 Future<void> sendError(
                   HttpResponse response,
-                  HttpsError error,
+                  HttpResponseException error,
                 ) async {
-                  response.statusCode = error.httpStatusCode;
+                  response.statusCode = error.statusCode;
                   response.headers.set(
                     'Content-Type',
                     'application/json; charset=utf-8',
                   );
-                  response.write(jsonEncode(error.toErrorResponse()));
+                  response.write(jsonEncode(error.toJson()));
                   await response.close();
                 }
 
@@ -265,14 +275,17 @@ class _FirebaseFunctionsAdminSdkHttp
 
                   request.response.write(await response.readAsString());
                   await request.response.close();
-                } on HttpsError catch (e) {
+                } on HttpResponseException catch (e) {
                   var response = request.response;
 
                   await sendError(response, e);
                 } catch (e) {
-                  var httpsError = InternalError('Internal error', {
-                    'exception': '$e',
-                  });
+                  var httpsError = HttpResponseException.internalServerError(
+                    message: 'Internal error',
+                    details: [
+                      {'exception': '$e'},
+                    ],
+                  );
                   var response = request.response;
 
                   await sendError(response, httpsError);
@@ -412,11 +425,16 @@ class _FirebaseFunctionsAdminSdkHttp
 }
 
 Future<void> _sendInternalError(HttpRequest request, Object e) async {
-  var error = InternalError('INTERNAL', {'exception': '$e'});
+  var error = HttpResponseException.internalServerError(
+    message: 'INTERNAL',
+    details: [
+      {'exception': '$e'},
+    ],
+  );
   var response = request.response;
-  response.statusCode = error.httpStatusCode;
+  response.statusCode = error.statusCode;
   response.headers.set('Content-Type', 'application/json; charset=utf-8');
-  response.write(jsonEncode(error.toErrorResponse()));
+  response.write(jsonEncode(error.toJson()));
   await response.close();
 }
 

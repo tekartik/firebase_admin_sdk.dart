@@ -42,4 +42,5 @@ export 'src/https_error.dart'
     show
         FirebaseFunctionsHttpsError,
         FirebaseFunctionsHttpsErrorCode,
+        FirebaseFunctionsAdminSdkHttpsError,
         FirebaseFunctionsHttpsErrorAdminSdkExt;

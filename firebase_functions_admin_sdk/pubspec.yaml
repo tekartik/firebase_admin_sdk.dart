@@ -9,8 +9,7 @@ environment:
 # Add regular dependencies here.
 dependencies:
   path: ">=1.9.1"
-  # Temp upper bounds (2028-08-05 that has flutter incompatibilities)
-  firebase_functions: ">=0.6.0 <0.7.0"
+  firebase_functions: ">=0.7.0"
   tekartik_firebase_admin_sdk:
     git:
       url: https://github.com/tekartik/firebase_admin_sdk.dart
