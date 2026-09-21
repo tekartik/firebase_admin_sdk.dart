@@ -232,11 +232,13 @@ class FirestoreAdminSdk
     sdk.Query<Map<String, Object?>> nativeQuery, {
     required List<Object> orderBy,
     required CollectionReferenceAdminSdk? collectionReference,
+    QueryInfo? queryInfo,
   }) => _QueryAdminSdk(
     this,
     nativeQuery,
     orderBy: orderBy,
     collectionReference: collectionReference,
+    queryInfo: queryInfo,
   );
 }
 
@@ -322,9 +324,12 @@ class _QueryAdminSdk with QueryMixin implements Query {
     this.nativeInstance, {
     required List<Object> orderBy,
     required CollectionReferenceAdminSdk? collectionReference,
+    QueryInfo? queryInfo,
   }) : _collectionReference =
            collectionReference as _CollectionReferenceAdminSdk?,
-       _orderByKey = orderBy;
+       _orderByKey = orderBy {
+    this.queryInfo = queryInfo ?? QueryInfo();
+  }
 
   @override
   Firestore get firestore => firestoreAdminSdk;
@@ -343,27 +348,38 @@ class _QueryAdminSdk with QueryMixin implements Query {
   Future<int> count() async => (await nativeInstance.count().get()).count!;
 
   @override
-  Query limit(int limit) => _wrapQuery(nativeInstance.limit(limit));
+  Query limit(int limit) => _wrapQuery(
+    nativeInstance.limit(limit),
+    queryInfo: queryInfo.clone()..limit = limit,
+  );
 
   @override
-  Query orderBy(String key, {bool? descending}) => _wrapQuery(
-    nativeInstance.orderBy(key, descending: descending ?? false),
-    addedOrderKey: key,
-  );
+  Query orderBy(String key, {bool? descending}) {
+    var desc = descending ?? false;
+    return _wrapQuery(
+      nativeInstance.orderBy(key, descending: desc),
+      addedOrderKey: key,
+      queryInfo: queryInfo.clone()
+        ..orderBys.add(OrderByInfo(fieldPath: key, ascending: !desc)),
+    );
+  }
 
   @override
   Query select(List<String> keyPaths) => _wrapQuery(
     nativeInstance.select(keyPaths.map((k) => sdk.FieldPath.from(k)).toList()),
+    queryInfo: queryInfo.clone()..selectKeyPaths = keyPaths,
   );
 
   _QueryAdminSdk _wrapQuery(
     sdk.Query<Map<String, Object?>> nativeInstance, {
     String? addedOrderKey,
+    QueryInfo? queryInfo,
   }) {
     return firestoreAdminSdk._wrapQuery(
       nativeInstance,
       orderBy: [..._orderByKey, ?addedOrderKey],
       collectionReference: collectionReference,
+      queryInfo: queryInfo ?? this.queryInfo.clone(),
     );
   }
 
@@ -381,6 +397,32 @@ class _QueryAdminSdk with QueryMixin implements Query {
     List<Object?>? whereIn,
     bool? isNull,
   }) {
+    if (isEqualTo == null &&
+        isLessThan == null &&
+        isLessThanOrEqualTo == null &&
+        isGreaterThan == null &&
+        isGreaterThanOrEqualTo == null &&
+        arrayContains == null &&
+        arrayContainsAny == null &&
+        whereIn == null &&
+        isNull == null) {
+      return this;
+    }
+    var newQueryInfo = queryInfo.clone()
+      ..addWhere(
+        WhereInfo(
+          fieldPath,
+          isEqualTo: isEqualTo,
+          isLessThan: isLessThan,
+          isLessThanOrEqualTo: isLessThanOrEqualTo,
+          isGreaterThan: isGreaterThan,
+          isGreaterThanOrEqualTo: isGreaterThanOrEqualTo,
+          arrayContains: arrayContains,
+          arrayContainsAny: arrayContainsAny?.cast<Object>(),
+          whereIn: whereIn?.cast<Object>(),
+          isNull: isNull,
+        ),
+      );
     if (isEqualTo != null) {
       return _wrapQuery(
         nativeInstance.where(
@@ -388,6 +430,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.equal,
           _wrapValue(isEqualTo),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (isLessThan != null) {
       return _wrapQuery(
@@ -396,6 +439,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.lessThan,
           _wrapValue(isLessThan),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (isLessThanOrEqualTo != null) {
       return _wrapQuery(
@@ -404,6 +448,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.lessThanOrEqual,
           _wrapValue(isLessThanOrEqualTo),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (isGreaterThan != null) {
       return _wrapQuery(
@@ -412,6 +457,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.greaterThan,
           _wrapValue(isGreaterThan),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (isGreaterThanOrEqualTo != null) {
       return _wrapQuery(
@@ -420,6 +466,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.greaterThanOrEqual,
           _wrapValue(isGreaterThanOrEqualTo),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (arrayContains != null) {
       return _wrapQuery(
@@ -428,6 +475,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.arrayContains,
           _wrapValue(arrayContains),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (arrayContainsAny != null) {
       return _wrapQuery(
@@ -436,6 +484,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.arrayContainsAny,
           _wrapValue(arrayContainsAny),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (whereIn != null) {
       return _wrapQuery(
@@ -444,10 +493,12 @@ class _QueryAdminSdk with QueryMixin implements Query {
           sdk.WhereFilter.isIn,
           _wrapValue(whereIn),
         ),
+        queryInfo: newQueryInfo,
       );
     } else if (isNull != null) {
       return _wrapQuery(
         nativeInstance.where(fieldPath, sdk.WhereFilter.equal, null),
+        queryInfo: newQueryInfo,
       );
     }
     return this;
@@ -485,6 +536,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
     (snapshot != null)
         ? nativeInstance.startAtDocument(snapshot._sdk.nativeInstance)
         : nativeInstance.startAt(_wrapBoundaryValues(values)),
+    queryInfo: queryInfo.clone()..startAt(snapshot: snapshot, values: values),
   );
 
   @override
@@ -492,6 +544,8 @@ class _QueryAdminSdk with QueryMixin implements Query {
     (snapshot != null)
         ? nativeInstance.startAfterDocument(snapshot._sdk.nativeInstance)
         : nativeInstance.startAfter(_wrapBoundaryValues(values)),
+    queryInfo: queryInfo.clone()
+      ..startAfter(snapshot: snapshot, values: values),
   );
 
   @override
@@ -499,6 +553,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
     (snapshot != null)
         ? nativeInstance.endAtDocument(snapshot._sdk.nativeInstance)
         : nativeInstance.endAt(_wrapBoundaryValues(values)),
+    queryInfo: queryInfo.clone()..endAt(snapshot: snapshot, values: values),
   );
 
   @override
@@ -506,6 +561,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
     (snapshot != null)
         ? nativeInstance.endBeforeDocument(snapshot._sdk.nativeInstance)
         : nativeInstance.endBefore(_wrapBoundaryValues(values)),
+    queryInfo: queryInfo.clone()..endBefore(snapshot: snapshot, values: values),
   );
 
   @override
@@ -514,19 +570,24 @@ class _QueryAdminSdk with QueryMixin implements Query {
   }
 
   @override
-  QueryMixin clone() => _wrapQuery(nativeInstance);
+  QueryMixin clone() =>
+      _wrapQuery(nativeInstance, queryInfo: queryInfo.clone());
 
   @override
   Stream<int> onCount() => throw UnsupportedError('onCount not supported');
 
   @override
-  Query orderById({bool? descending}) => _wrapQuery(
-    nativeInstance.orderBy(
-      sdk.FieldPath.documentId,
-      descending: descending ?? false,
-    ),
-    addedOrderKey: firestoreNameFieldPath,
-  );
+  Query orderById({bool? descending}) {
+    var desc = descending ?? false;
+    return _wrapQuery(
+      nativeInstance.orderBy(sdk.FieldPath.documentId, descending: desc),
+      addedOrderKey: firestoreNameFieldPath,
+      queryInfo: queryInfo.clone()
+        ..orderBys.add(
+          OrderByInfo(fieldPath: firestoreNameFieldPath, ascending: !desc),
+        ),
+    );
+  }
 }
 
 /// Collection reference

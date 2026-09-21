@@ -151,7 +151,7 @@ import 'dart:io';
 
 import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firestore_admin_sdk.dart';
-import 'package:tekartik_firebase_firestore_test/firestore_test.dart';
+import 'package:tekartik_firebase_firestore_test/firestore_test_runner.dart';
 import 'package:test/test.dart';
 
 /// Run with FIRESTORE_EMULATOR_HOST=localhost:8080 exported.
