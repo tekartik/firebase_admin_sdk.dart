@@ -34,7 +34,7 @@ tests and dev runs need neither the firebase emulator nor a deployment.
   `Request`, `Response`, `CallableRequest`, `CallableResult`, `TaskRequest`,
   `CloudEvent`, `PubsubMessage`.
 
-* Create the service with `FirebaseFunctionsServiceAdminSdkHttp(httpServerFactory:)`
+* Create the service with `FirebaseFunctionsServiceAdminSdkHttp(httpServerFactory:, port:)`
   (or the identical `newFirebaseFunctionsServiceAdminSdkHttp(...)`), then
   `await service.fireUp(app, (functions) { ... })`. `fireUp` first calls the
   runner (`TekartikFirebaseFunctionsAdminSdkHttpRunner`, which registers the
@@ -46,10 +46,12 @@ tests and dev runs need neither the firebase emulator nor a deployment.
   `package:tekartik_http/http_memory.dart`), which is what the shared
   singleton `firebaseAdminServiceAdminSdkHttp` uses: perfect for tests, no
   real socket. For a real server pass `httpServerFactoryIo` (add
-  `tekartik_http_io` to your dependencies). The port is the
-  `tekartik_firebase_functions_http` default; read the effective one from
-  `functions.httpServer.port`, or build urls with `httpServerGetUri(server)`
-  from `package:tekartik_http/http_server.dart`.
+  `tekartik_http_io` to your dependencies). `port` defaults to the
+  `tekartik_firebase_functions_http` default (`firebaseFunctionsHttpDefaultPort`,
+  4999); pass another one for a dev server (`port: 8040`), or 0 for any free
+  port. The startup listing (`<name> http://localhost:<port>/<name>`) shows
+  the port bound; read it from `functions.httpServer.port`, or build urls
+  with `httpServerGetUri(server)` from `package:tekartik_http/http_server.dart`.
 
 * The `app` passed to `fireUp` is any `tekartik_firebase` `FirebaseApp`: use
   `newFirebaseAppMemory()` from `package:tekartik_firebase_local/firebase_local.dart`

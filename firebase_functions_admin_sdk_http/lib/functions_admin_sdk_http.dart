@@ -30,10 +30,15 @@ typedef TekartikFirebaseFunctionsAdminSdkHttpRunner =
 abstract class FirebaseFunctionsServiceAdminSdkHttp
     implements FirebaseFunctionsService {
   /// Creates a local HTTP-based Firebase Functions service for Admin SDK simulation.
+  ///
+  /// [httpServerFactory] defaults to an in-memory server; [port] to
+  /// `firebaseFunctionsHttpDefaultPort` (4999), 0 for any free port.
   factory FirebaseFunctionsServiceAdminSdkHttp({
     HttpServerFactory? httpServerFactory,
+    int? port,
   }) => _FirebaseFunctionsServiceAdminSdkHttp(
     httpServerFactory: httpServerFactory,
+    port: port,
   );
 
   /// Starts an HTTP server and calls [runner] to register functions on it.
@@ -155,6 +160,8 @@ class _FirebaseFunctionsAdminSdkHttp
       InternetAddress.anyIPv4,
       port,
     );
+    // The port bound, which differs from the one asked for with 0.
+    port = requestServer.port;
     for (final key in _functions.keys) {
       // ignore: avoid_print
       print('$key http://localhost:$port/$key');
@@ -550,9 +557,12 @@ class _FirebaseFunctionsServiceAdminSdkHttp
         FirebaseFunctionsServiceDefaultMixin
     implements FirebaseFunctionsServiceAdminSdkHttp {
   final HttpServerFactory _httpServerFactory;
+  final int? _port;
 
-  _FirebaseFunctionsServiceAdminSdkHttp({HttpServerFactory? httpServerFactory})
-    : _httpServerFactory = httpServerFactory ?? httpServerFactoryMemory;
+  _FirebaseFunctionsServiceAdminSdkHttp({
+    HttpServerFactory? httpServerFactory,
+    this._port,
+  }) : _httpServerFactory = httpServerFactory ?? httpServerFactoryMemory;
 
   @override
   Future<void> fireUp(
@@ -566,15 +576,20 @@ class _FirebaseFunctionsServiceAdminSdkHttp
     );
 
     await runner(ff);
-    await ff.serveHttp();
+    await ff.serveHttp(port: _port);
   }
 }
 
 /// Create a Firebase Functions Admin SDK HTTP service.
 ///
 /// Uses an in-memory HTTP server by default (suitable for tests).
-/// Pass a custom [httpServerFactory] to use a real IO server.
+/// Pass a custom [httpServerFactory] to use a real IO server, and [port] to
+/// listen on another port than `firebaseFunctionsHttpDefaultPort` (4999), 0
+/// for any free port.
 FirebaseFunctionsServiceAdminSdkHttp newFirebaseFunctionsServiceAdminSdkHttp({
   HttpServerFactory? httpServerFactory,
-}) =>
-    _FirebaseFunctionsServiceAdminSdkHttp(httpServerFactory: httpServerFactory);
+  int? port,
+}) => _FirebaseFunctionsServiceAdminSdkHttp(
+  httpServerFactory: httpServerFactory,
+  port: port,
+);
