@@ -50,6 +50,9 @@ class _FirebaseFirestoreServiceAdminSdk
   bool get supportsListCollections => true;
 
   @override
+  bool get supportsListMissingDocuments => true;
+
+  @override
   bool get supportsAggregateQueries => false;
 
   @override
@@ -622,6 +625,21 @@ class _CollectionReferenceAdminSdk extends _QueryAdminSdk
   Future<DocumentReference> add(Map<String, Object?> data) async {
     var sdkDocRef = await nativeInstance.add(firestoreAdminSdk._wrapData(data));
     return firestoreAdminSdk._wrapDocumentReference(sdkDocRef);
+  }
+
+  /// The native implementation lists all the documents at once (paging is
+  /// applied locally), always including the missing ones.
+  @override
+  Future<FirestoreListDocumentsResult> listDocuments({
+    FirestoreListDocumentsOptions? options,
+  }) async {
+    if (!(options?.showMissing ?? true)) {
+      return super.listDocuments(options: options);
+    }
+    var refs = (await nativeInstance.listDocuments())
+        .map(firestoreAdminSdk._wrapDocumentReference)
+        .toList();
+    return firestoreListDocumentsResultFromAllRefs(refs, options);
   }
 
   @override

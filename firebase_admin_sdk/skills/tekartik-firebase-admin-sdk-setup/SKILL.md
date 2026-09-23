@@ -52,10 +52,11 @@ Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
   `supportsTrackChanges` is `false`: `onSnapshot` and `documentChanges` throw
   `UnsupportedError`. `supportsAggregateQueries` is `false` (`aggregate`
   throws) but `Query.count()` works. `listCollections`, `select`, `Timestamp`,
-  `Blob`, `GeoPoint`, `VectorValue` and `FieldValue` are supported. To list a
-  collection including the missing documents that only hold sub collections,
-  cast to `FirestoreAdminSdk` and call `listDocuments()` on a collection of
-  `nativeInstance` (a `google_cloud_firestore` `Firestore`).
+  `Blob`, `GeoPoint`, `VectorValue` and `FieldValue` are supported.
+  `collRef.listDocuments()` also lists the missing documents that only hold
+  sub collections (`supportsListMissingDocuments`); the native call only
+  returns the first page of the backend (about 300 documents) and paging
+  options are applied locally.
 * Auth is server side only: `supportsCurrentUser` is `false` (no sign in),
   `supportsListUsers` is `true`. `listUsers`, `getUser` and `getUserByEmail`
   are on `FirebaseAuth` and return `null` when the user is missing (or on any
