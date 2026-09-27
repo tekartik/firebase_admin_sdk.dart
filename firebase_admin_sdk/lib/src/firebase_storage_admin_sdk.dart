@@ -134,7 +134,10 @@ extension on StorageUploadFileOptions {
     var contentType =
         this.contentType ?? firebaseStorageContentTypeFromFilename(name);
 
-    return sdk.ObjectMetadata(contentType: contentType);
+    return sdk.ObjectMetadata(
+      contentType: contentType,
+      cacheControl: cacheControl,
+    );
   }
 }
 
@@ -216,6 +219,9 @@ class FileMetadataAdminSdk with FileMetadataMixin implements FileMetadata {
 
   @override
   String? get contentType => nativeInstance.contentType;
+
+  @override
+  String? get cacheControl => nativeInstance.cacheControl;
 }
 
 /// Reference implementation for Admin SDK.
