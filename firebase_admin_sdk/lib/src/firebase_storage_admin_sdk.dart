@@ -121,7 +121,13 @@ class BucketAdminSdk with BucketMixin implements Bucket {
 
     return GetFilesResponse(
       files: objects
-          .map((f) => FileAdminSdk(this, nativeInstance.object(f.name!)))
+          .map(
+            (f) => FileAdminSdk(
+              this,
+              nativeInstance.object(f.name!),
+              metadata: FileMetadataAdminSdk(f),
+            ),
+          )
           .toList(),
       nextQuery:
           null, // Simple implementation for now as stream handles pagination
@@ -150,8 +156,8 @@ class FileAdminSdk with FileMixin implements File {
   /// Native file instance
   final sdk.StorageObject nativeInstance;
 
-  /// Constructor
-  FileAdminSdk(this.bucket, this.nativeInstance);
+  /// Constructor, [metadata] is set for a listed file.
+  FileAdminSdk(this.bucket, this.nativeInstance, {this.metadata});
 
   @override
   String get name => nativeInstance.name;
@@ -182,7 +188,7 @@ class FileAdminSdk with FileMixin implements File {
   Future<void> delete() => nativeInstance.delete();
 
   @override
-  FileMetadata? get metadata => null;
+  final FileMetadata? metadata;
 
   @override
   Future<FileMetadata> getMetadata() async {

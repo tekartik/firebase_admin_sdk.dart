@@ -1,0 +1,7 @@
+# The local firebase project, the emulator tests are skipped without it:
+# {"projects": {"default": "<project id>"}}
+.firebaserc
+
+# Emulator logs and data
+*.log
+.data/
