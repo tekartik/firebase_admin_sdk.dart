@@ -44,6 +44,9 @@ class _FirebaseFirestoreServiceAdminSdk
   bool get supportsFieldValueArray => true;
 
   @override
+  bool get supportsFieldValueIncrement => true;
+
+  @override
   bool get supportsTrackChanges => false; // google_cloud_firestore is REST based
 
   @override
@@ -126,6 +129,8 @@ class FirestoreAdminSdk
         return sdk.FieldValue.arrayUnion(value.data as List);
       } else if (value.type == FieldValueType.arrayRemove) {
         return sdk.FieldValue.arrayRemove(value.data as List);
+      } else if (value is FieldValueIncrement) {
+        return sdk.FieldValue.increment(value.data);
       }
     } else if (value is DocumentReferenceAdminSdk) {
       return value.nativeInstance;
