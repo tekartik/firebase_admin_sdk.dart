@@ -43,3 +43,10 @@ export 'src/https_error.dart'
         FirebaseFunctionsHttpsErrorCode,
         FirebaseFunctionsAdminSdkHttpsError,
         FirebaseFunctionsHttpsErrorAdminSdkExt;
+export 'src/task_queue_admin_sdk.dart'
+    if (dart.library.js_interop) 'src/platform/platform_web.dart'
+    show
+        taskQueueServiceAdminSdk,
+        TaskQueueServiceAdminSdk,
+        TaskQueueRequestAdminSdk,
+        FirebaseFunctionsAdminSdkTaskQueueExt;

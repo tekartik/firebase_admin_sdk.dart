@@ -74,3 +74,24 @@ await queue.enqueue(
   ),
 );
 ```
+
+## The tekartik task abstraction
+
+Code written against `package:tekartik_firebase_functions/firebase_functions_tasks.dart`
+(`TaskQueueService`, `TaskQueueHandler`, tested in process with
+`TaskQueueServiceMemory`) runs on the dart3 runtime with:
+
+```dart
+// Enqueue (Cloud Tasks through the admin sdk).
+var tasks = taskQueueServiceAdminSdk(firebase.firebaseApp,
+    defaultRegion: 'europe-west1');
+await tasks.taskQueue('my-task').enqueue({'my': 'data'});
+
+// Handle: the native request wrapped as a TaskQueueRequest.
+// ignore: experimental_member_use
+firebase.tasks.onTaskDispatched(
+  firebase.taskQueueHandler(myTaskQueueHandler),
+  name: 'my-task',
+  options: const TaskQueueOptions(region: Region(SupportedRegion.europeWest1)),
+);
+```

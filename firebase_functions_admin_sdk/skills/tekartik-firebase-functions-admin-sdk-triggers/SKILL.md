@@ -69,6 +69,15 @@ and `onMessagePublished` (Pub/Sub), with tekartik handlers that receive a
   and `firebasePubsubServiceAdminSdk.topic(app, name).publish(map)`. Inside a
   function, use `firebaseFunctions.app` as the app.
 
+* Code written against the tekartik task abstraction
+  (`tekartik_firebase_functions/firebase_functions_tasks.dart`, tested with
+  `TaskQueueServiceMemory`) runs here with `taskQueueServiceAdminSdk(app,
+  defaultRegion: 'europe-west1')` (enqueue, on top of
+  `firebaseTasksServiceAdminSdk`) and
+  `firebase.tasks.onTaskDispatched(firebase.taskQueueHandler(handler), name:
+  'mytaskv1', options: const TaskQueueOptions(...))` (the native request
+  wrapped as a `TaskQueueRequest`, `TaskQueueRequestAdminSdk`).
+
 * Emulator caveats. The tasks emulator runs with the functions emulator and
   sets `CLOUD_TASKS_EMULATOR_HOST`, but the url the admin sdk builds is the
   production function url, so pass
