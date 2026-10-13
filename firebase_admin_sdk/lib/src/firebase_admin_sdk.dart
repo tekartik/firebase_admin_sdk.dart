@@ -197,7 +197,15 @@ class _TekartikFirebaseAppAdminSdk
   @override
   Future<void> delete() async {
     await super.delete();
-    await sdk.FirebaseApp.deleteApp(_app);
+    try {
+      await sdk.FirebaseApp.deleteApp(_app);
+    } catch (_) {
+      // The app is already out of the sdk registry when its services fail
+      // to close, so the caller could not retry. google_cloud_firestore
+      // 0.5.5 creates the auth client of a Firestore that never sent a
+      // request just to close it, which fails without credentials (CI).
+      // https://github.com/firebase/firebase-admin-dart/issues/339
+    }
   }
 
   _TekartikFirebaseAppAdminSdk(this._firebase, this._app, this.options);
