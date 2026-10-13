@@ -51,10 +51,6 @@ void main() async {
       signInInfo: signInInfo,
     );
   });
-  test('uri', () {
-    //expect(uri.toString(), 'http://_memory:${server.port}/adminsdkmemorybasic');
-  });
-
   ffAdminSdkCallTestGroup(() => testClientContext);
   tearDownAll(() async {
     await testServerContext.tearDownAll();

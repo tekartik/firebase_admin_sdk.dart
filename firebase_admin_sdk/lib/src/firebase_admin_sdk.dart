@@ -16,8 +16,12 @@ abstract class FirebaseAppOptionsAdminSdk implements FirebaseAppOptions {}
 /// Admin SDK specific firebase implementation.
 abstract class TekartikFirebaseAdminSdk implements FirebaseAdminSdk {}
 
-/// Internal Admin SDK firebase API entry point.
-TekartikFirebaseAdminSdk get prvFirebaseAdminSdk => _TekartikFirebaseAdminSdk();
+/// Internal Admin SDK firebase API entry point (a single instance, so that
+/// the apps it initializes can be found again with `app(name:)`).
+TekartikFirebaseAdminSdk get prvFirebaseAdminSdk =>
+    _prvFirebaseAdminSdk ??= _TekartikFirebaseAdminSdk();
+
+TekartikFirebaseAdminSdk? _prvFirebaseAdminSdk;
 
 class _FirebaseAppOptionsWithCredential
     with FirebaseAppOptionsMixin

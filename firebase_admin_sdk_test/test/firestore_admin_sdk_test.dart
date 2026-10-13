@@ -7,13 +7,17 @@ import 'package:test/test.dart';
 var firebase = firebaseAdminSdk;
 var firestoreService = firestoreServiceAdminSdk;
 
-void testAppOnly(Firestore Function() getFirestore) {
+void testAppOnly(
+  FirebaseApp Function() getApp,
+  Firestore Function() getFirestore,
+) {
   late Firestore firestore;
+  late FirebaseApp app;
   setUpAll(() {
+    app = getApp();
     firestore = getFirestore();
   });
   test('app', () {
-    var app = firestore.app;
     expect(firestore.app, app);
     expect(firestore.service, firestoreService);
     expect(firestoreService.firestore(app), firestore);
@@ -33,18 +37,22 @@ void main() {
   group('admin_sdk', () {
     late Firestore firestore;
     late FirebaseApp app;
-    // there is no name on node
     setUpAll(() {
-      app = firebase.initializeApp();
+      // No credentials needed for these tests (no request is sent).
+      app = firebase.initializeApp(
+        options: AppOptions(projectId: 'demo-firestore-admin-sdk-test'),
+        name: 'firestore_admin_sdk_test',
+      );
       firestore = firestoreService.firestore(app);
     });
     tearDownAll(() async {
       await app.delete();
     });
-    testAppOnly(() => firestore);
+    testAppOnly(() => app, () => firestore);
 
     test('isLocal', () {
-      expect(firestore.service.supportsBlobs, isFalse);
+      expect(app.isLocal, isFalse);
+      expect(firestore.service.supportsBlobs, isTrue);
     });
-  }, skip: true);
+  });
 }

@@ -126,9 +126,10 @@ class FirestoreAdminSdk
       } else if (FieldValue.serverTimestamp == value) {
         return sdk.FieldValue.serverTimestamp;
       } else if (value.type == FieldValueType.arrayUnion) {
-        return sdk.FieldValue.arrayUnion(value.data as List);
+        // Elements converted like any other value (Timestamp, reference...)
+        return sdk.FieldValue.arrayUnion(_wrapValues(value.data as List)!);
       } else if (value.type == FieldValueType.arrayRemove) {
-        return sdk.FieldValue.arrayRemove(value.data as List);
+        return sdk.FieldValue.arrayRemove(_wrapValues(value.data as List)!);
       } else if (value is FieldValueIncrement) {
         return sdk.FieldValue.increment(value.data);
       }
@@ -431,85 +432,27 @@ class _QueryAdminSdk with QueryMixin implements Query {
           isNull: isNull,
         ),
       );
-    if (isEqualTo != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.equal,
-          _wrapValue(isEqualTo),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (isLessThan != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.lessThan,
-          _wrapValue(isLessThan),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (isLessThanOrEqualTo != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.lessThanOrEqual,
-          _wrapValue(isLessThanOrEqualTo),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (isGreaterThan != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.greaterThan,
-          _wrapValue(isGreaterThan),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (isGreaterThanOrEqualTo != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.greaterThanOrEqual,
-          _wrapValue(isGreaterThanOrEqualTo),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (arrayContains != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.arrayContains,
-          _wrapValue(arrayContains),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (arrayContainsAny != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.arrayContainsAny,
-          _wrapValue(arrayContainsAny),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (whereIn != null) {
-      return _wrapQuery(
-        nativeInstance.where(
-          fieldPath,
-          sdk.WhereFilter.isIn,
-          _wrapValue(whereIn),
-        ),
-        queryInfo: newQueryInfo,
-      );
-    } else if (isNull != null) {
-      return _wrapQuery(
-        nativeInstance.where(fieldPath, sdk.WhereFilter.equal, null),
-        queryInfo: newQueryInfo,
-      );
+    // Every condition is applied (not only the first one).
+    var native = nativeInstance;
+    for (var (filter, value) in [
+      if (isEqualTo != null) (sdk.WhereFilter.equal, isEqualTo),
+      if (isLessThan != null) (sdk.WhereFilter.lessThan, isLessThan),
+      if (isLessThanOrEqualTo != null)
+        (sdk.WhereFilter.lessThanOrEqual, isLessThanOrEqualTo),
+      if (isGreaterThan != null) (sdk.WhereFilter.greaterThan, isGreaterThan),
+      if (isGreaterThanOrEqualTo != null)
+        (sdk.WhereFilter.greaterThanOrEqual, isGreaterThanOrEqualTo),
+      if (arrayContains != null) (sdk.WhereFilter.arrayContains, arrayContains),
+      if (arrayContainsAny != null)
+        (sdk.WhereFilter.arrayContainsAny, arrayContainsAny),
+      if (whereIn != null) (sdk.WhereFilter.isIn, whereIn),
+      // A null value gives IS_NULL for equal, IS_NOT_NULL for notEqual.
+      if (isNull != null)
+        (isNull ? sdk.WhereFilter.equal : sdk.WhereFilter.notEqual, null),
+    ]) {
+      native = native.where(fieldPath, filter, _wrapValue(value));
     }
-    return this;
+    return _wrapQuery(native, queryInfo: newQueryInfo);
   }
 
   List<Object> _wrapBoundaryValues(List? values) {

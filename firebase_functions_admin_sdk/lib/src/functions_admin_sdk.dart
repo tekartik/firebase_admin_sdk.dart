@@ -204,23 +204,28 @@ class _CallContextAdminSdk implements CallContext {
   _CallContextAdminSdk({required this.auth});
 }
 
+/// Call context of a callable [request].
+///
+/// The uid comes from the verified auth token (null when unauthenticated),
+/// never from a header the caller can set (such as the instance id token).
+CallContext callContextAdminSdkFromRequest(
+  fn.CallableRequest<Object?> request,
+) {
+  var uid = request.auth?.uid;
+  return _CallContextAdminSdk(
+    auth: uid == null
+        ? null
+        : _CallContextAuthAdminSdk(token: _CallContextDecodedIdToken(uid: uid)),
+  );
+}
+
 class _CallRequestAdminSdk implements CallRequest {
   final fn.CallableRequest<Object?> request;
   final fn.CallableResponse<Object?> response;
 
   _CallRequestAdminSdk(this.request, this.response);
   @override
-  late final context = () {
-    var uid = request.instanceIdToken;
-    _CallContextAuthAdminSdk? auth;
-    if (uid != null) {
-      auth = _CallContextAuthAdminSdk(
-        token: _CallContextDecodedIdToken(uid: uid),
-      );
-    }
-    var context = _CallContextAdminSdk(auth: auth);
-    return context;
-  }();
+  late final CallContext context = callContextAdminSdkFromRequest(request);
 
   @override
   Object? get data => request.data;

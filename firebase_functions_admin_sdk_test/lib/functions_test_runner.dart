@@ -1,6 +1,5 @@
 import 'package:cv/cv_json.dart';
 import 'package:dev_test/dev_test.dart';
-import 'package:path/path.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/test_context.dart';
 import 'package:tekartik_http/http.dart';
 
@@ -18,6 +17,10 @@ void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
   setUpAll(() async {
     await context.setUpAll();
     client = context.client;
+  });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
   });
 
   test('hello', () async {
@@ -82,8 +85,7 @@ void functionsCallGroup(FirebaseFunctionsAdminSdkTestContext context) {
       body: {'data': request.toMap()}.cvToJson(),
     )).jsonToMap();
     var result = map['result'] as Map;
-    // ignore: avoid_print
-    print('result: ${result.cvToJsonPretty()}');
+    expect(result['users'], isA<List>());
   });
 }
 
@@ -94,6 +96,10 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
   setUpAll(() async {
     await context.setUpAll();
     client = context.client;
+  });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
   });
 
   /// Most basic
@@ -149,29 +155,6 @@ void functionsHttpGroup(FirebaseFunctionsAdminSdkTestContext context) {
       'contentLength': 0,
       'protocolVersion': '1.1',
     });
-    // ignore: dead_code
-    if (false) {
-      uri = context
-          .httpsUri(url.join(testDartFunctionHttpsV1, 'sub'))
-          .withInfo();
-      result = await httpClientRead(client, httpMethodGet, uri);
-      map = result.jsonToMap();
-      // {
-      //   "url": "admin-sdk-https-v1/?info=true",
-      //   "requestedUri": "http://localhost:5001/admin-sdk-https-v1/?info=true",
-      //   "method": "GET",
-      //   "protocolVersion": "1.1"
-      // }
-      // ignore: avoid_print
-      print(map.cvToJsonPretty());
-
-      expect(map['requestedUri'], endsWith('/sub?info=true'));
-      expect(
-        map['url'],
-
-        endsWith('sub?info=true'),
-      ); // deployed has en empty url
-    }
     result = await httpClientRead(client, httpMethodPost, uri, body: 'test');
     map = result.jsonToMap();
 
@@ -245,6 +228,10 @@ void functionsTaskGroup(FirebaseFunctionsAdminSdkTestContext context) {
   setUpAll(() async {
     await context.setUpAll();
   });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
+  });
 
   test('task dispatched', () async {
     await testTaskRecordClear();
@@ -303,6 +290,10 @@ void functionsTaskFirestoreGroup(FirebaseFunctionsAdminSdkTestContext context) {
   setUpAll(() async {
     await context.setUpAll();
   });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
+  });
 
   test('task dispatched firestore', () async {
     await callFunctionTasksFirestoreClear(context);
@@ -348,6 +339,10 @@ Future<List<Map<String, Object?>>> waitForReceivedMessages(
 void functionsPubsubGroup(FirebaseFunctionsAdminSdkTestContext context) {
   setUpAll(() async {
     await context.setUpAll();
+  });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
   });
 
   test('message published', () async {
@@ -402,6 +397,10 @@ void functionsPubsubFirestoreGroup(
 ) {
   setUpAll(() async {
     await context.setUpAll();
+  });
+  // Balanced, so that the context is released after the last group.
+  tearDownAll(() async {
+    await context.tearDownAll();
   });
 
   test('message published firestore', () async {

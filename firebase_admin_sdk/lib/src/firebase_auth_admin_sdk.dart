@@ -58,7 +58,11 @@ class AuthAdminSdk
   final admin_sdk.Auth nativeInstance;
 
   /// Constructor
-  AuthAdminSdk(this.service, this.appAdminSdk, this.nativeInstance);
+  AuthAdminSdk(this.service, this.appAdminSdk, this.nativeInstance) {
+    // No current user on the admin sdk: emitted once, like the REST
+    // implementation when ready, so that onCurrentUser does not hang.
+    currentUserAdd(null);
+  }
 
   @override
   App get app => appAdminSdk;
@@ -128,8 +132,12 @@ class AuthAdminSdk
     try {
       var nativeUser = await nativeInstance.getUser(uid);
       return _UserRecordAdminSdk(nativeUser);
-    } catch (_) {
-      return null;
+    } on admin_sdk.FirebaseAuthAdminException catch (e) {
+      // Only a missing user is null, other errors are thrown.
+      if (e.errorCode == admin_sdk.AuthClientErrorCode.userNotFound) {
+        return null;
+      }
+      rethrow;
     }
   }
 
@@ -138,8 +146,12 @@ class AuthAdminSdk
     try {
       var nativeUser = await nativeInstance.getUserByEmail(email);
       return _UserRecordAdminSdk(nativeUser);
-    } catch (e) {
-      return null;
+    } on admin_sdk.FirebaseAuthAdminException catch (e) {
+      // Only a missing user is null, other errors are thrown.
+      if (e.errorCode == admin_sdk.AuthClientErrorCode.userNotFound) {
+        return null;
+      }
+      rethrow;
     }
   }
 

@@ -179,11 +179,16 @@ class _FirebaseFunctionsAdminSdkHttp
           // /test
           var functionKey = uri.pathSegments.firstOrNull;
           try {
-            if (functionKey == null) {
-              // ignore: avoid_print
-              print('No functions key found for $uri');
+            var function = functionKey == null ? null : _functions[functionKey];
+            if (function == null) {
+              // Answered, otherwise the request never completes.
+              await _sendError(
+                request.response,
+                HttpResponseException.notFound(
+                  message: 'Function ${functionKey ?? '/'} not found',
+                ),
+              );
             } else {
-              var function = _functions[functionKey];
               if (function is _HttpsFunction) {
                 var method = request.method;
 
@@ -244,19 +249,6 @@ class _FirebaseFunctionsAdminSdkHttp
                   acceptsStreaming: false,
                 );
 
-                Future<void> sendError(
-                  HttpResponse response,
-                  HttpResponseException error,
-                ) async {
-                  response.statusCode = error.statusCode;
-                  response.headers.set(
-                    'Content-Type',
-                    'application/json; charset=utf-8',
-                  );
-                  response.write(jsonEncode(error.toJson()));
-                  await response.close();
-                }
-
                 try {
                   var result = await function.handler(
                     this,
@@ -275,7 +267,7 @@ class _FirebaseFunctionsAdminSdkHttp
                 } on HttpResponseException catch (e) {
                   var response = request.response;
 
-                  await sendError(response, e);
+                  await _sendError(response, e);
                 } catch (e) {
                   var httpsError = HttpResponseException.internalServerError(
                     message: 'Internal error',
@@ -285,7 +277,7 @@ class _FirebaseFunctionsAdminSdkHttp
                   );
                   var response = request.response;
 
-                  await sendError(response, httpsError);
+                  await _sendError(response, httpsError);
                 }
                 /*
                   request.response.statusCode = e.code;
@@ -428,7 +420,14 @@ Future<void> _sendInternalError(HttpRequest request, Object e) async {
       {'exception': '$e'},
     ],
   );
-  var response = request.response;
+  await _sendError(request.response, error);
+}
+
+/// Sends [error] as json and closes the [response].
+Future<void> _sendError(
+  HttpResponse response,
+  HttpResponseException error,
+) async {
   response.statusCode = error.statusCode;
   response.headers.set('Content-Type', 'application/json; charset=utf-8');
   response.write(jsonEncode(error.toJson()));

@@ -6,11 +6,12 @@ import 'package:path/path.dart';
 import 'package:tekartik_app_http/app_http.dart';
 import 'package:tekartik_firebase_emulator/firebase_emulator.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_test/emulator_test_context.dart';
-import 'package:tekartik_firebase_functions_admin_sdk_test/functions_test_runner.dart';
 import 'package:tekartik_firebase_functions_call_http/functions_call_http.dart';
 import 'package:tekartik_firebase_functions_test/firebase_functions_test_runner.dart';
 import 'package:tekartik_firebase_local/firebase_local.dart';
 import 'package:test/test.dart';
+
+import 'src/functions_groups.dart';
 
 var defaultRegion = regionBelgium;
 var _emulatorService = FirebaseEmulatorService(path: '.');
@@ -64,24 +65,7 @@ Future main() async {
       await testContext.tearDownAll();
       await testClientContext.close();
     });
-    group('https', () {
-      functionsHttpGroup(testContext);
-    });
-    group('call', () {
-      functionsCallGroup(testContext);
-    });
-    group('tasks', () {
-      functionsTaskGroup(testContext);
-    });
-    group('tasks firestore', () {
-      functionsTaskFirestoreGroup(testContext);
-    });
-    group('pubsub', () {
-      functionsPubsubGroup(testContext);
-    });
-    group('pubsub firestore', () {
-      functionsPubsubFirestoreGroup(testContext);
-    });
+    functionsAdminSdkGroups(testContext);
     basicTestGroup(() => testClientContext);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
