@@ -23,6 +23,21 @@ void main() {
         _request(auth: const fn.AuthData(uid: 'user-1')),
       );
       expect(context.auth?.uid, 'user-1');
+      expect(context.auth?.token?.signInProvider, isNull);
+    });
+    test('sign in provider', () {
+      var context = callContextAdminSdkFromRequest(
+        _request(
+          auth: const fn.AuthData(
+            uid: 'user-1',
+            token: {
+              'firebase': {'sign_in_provider': 'anonymous'},
+            },
+          ),
+        ),
+      );
+      expect(context.auth?.token?.uid, 'user-1');
+      expect(context.auth?.token?.signInProvider, 'anonymous');
     });
     test('instance id token is never the uid', () {
       // A header any caller can set.

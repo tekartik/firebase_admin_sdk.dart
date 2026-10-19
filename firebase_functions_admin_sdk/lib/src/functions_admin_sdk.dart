@@ -184,7 +184,22 @@ class _CallContextDecodedIdToken implements DecodedIdToken {
   @override
   final String uid;
 
-  _CallContextDecodedIdToken({required this.uid});
+  @override
+  final String? signInProvider;
+
+  _CallContextDecodedIdToken({required this.uid, this.signInProvider});
+}
+
+/// The `firebase.sign_in_provider` claim of the decoded id [token] claims.
+String? _signInProviderFromClaims(Map<String, Object?>? token) {
+  var firebase = token?['firebase'];
+  if (firebase is Map) {
+    var signInProvider = firebase['sign_in_provider'];
+    if (signInProvider is String) {
+      return signInProvider;
+    }
+  }
+  return null;
 }
 
 class _CallContextAuthAdminSdk implements CallContextAuth {
@@ -211,11 +226,16 @@ class _CallContextAdminSdk implements CallContext {
 CallContext callContextAdminSdkFromRequest(
   fn.CallableRequest<Object?> request,
 ) {
-  var uid = request.auth?.uid;
+  var auth = request.auth;
   return _CallContextAdminSdk(
-    auth: uid == null
+    auth: auth == null
         ? null
-        : _CallContextAuthAdminSdk(token: _CallContextDecodedIdToken(uid: uid)),
+        : _CallContextAuthAdminSdk(
+            token: _CallContextDecodedIdToken(
+              uid: auth.uid,
+              signInProvider: _signInProviderFromClaims(auth.token),
+            ),
+          ),
   );
 }
 

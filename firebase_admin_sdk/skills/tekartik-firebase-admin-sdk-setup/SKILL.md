@@ -64,6 +64,10 @@ Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
   `FirebaseAuthAdmin` from `package:tekartik_firebase_auth/auth_admin.dart`:
   cast the auth. `createUser` only forwards `uid`, `email`, `password` and
   `disabled` (`displayName`, `phoneNumber`, `emailVerified` are ignored).
+  `verifyIdToken(idToken, checkRevoked:)` returns a `DecodedIdToken` (`uid`,
+  `signInProvider` such as `'anonymous'`), the `UserRecord.metadata` times
+  (`creationTime`, `lastSignInTime`, `lastRefreshTime`) are iso8601 utc
+  strings.
 * Storage: `storage.bucket()` needs `storageBucket` in the app options or an
   explicit name, otherwise `StateError`. `Reference.getDownloadUrl()` throws
   `UnsupportedError`. `File.metadata` is always `null`: `await getMetadata()`.

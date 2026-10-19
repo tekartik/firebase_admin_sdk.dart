@@ -155,10 +155,66 @@ class AuthAdminSdk
     }
   }
 
+  /// Verifies the ID token [idToken] with the admin sdk, see
+  /// [FirebaseAuth.verifyIdToken]; [DecodedIdToken.signInProvider] is the
+  /// `firebase.sign_in_provider` claim.
+  @override
+  Future<DecodedIdToken> verifyIdToken(
+    String idToken, {
+    bool? checkRevoked,
+  }) async {
+    var nativeToken = await nativeInstance.verifyIdToken(
+      idToken,
+      checkRevoked: checkRevoked ?? false,
+    );
+    return _DecodedIdTokenAdminSdk(nativeToken);
+  }
+
   @override
   Future<User> reloadCurrentUser() => throw UnsupportedError(
     'reloadCurrentUser not supported for admin sdk yet',
   );
+}
+
+/// Decoded ID token of the admin sdk.
+class _DecodedIdTokenAdminSdk implements DecodedIdToken {
+  final sdk.DecodedIdToken nativeToken;
+
+  _DecodedIdTokenAdminSdk(this.nativeToken);
+
+  @override
+  String get uid => nativeToken.uid;
+
+  @override
+  String? get signInProvider => nativeToken.firebase.signInProvider;
+
+  @override
+  String toString() => 'DecodedIdToken($uid, $signInProvider)';
+}
+
+/// An iso8601 utc string of [dateTime], null when there is none.
+String? _utcString(DateTime? dateTime) => dateTime?.toUtc().toIso8601String();
+
+/// User metadata of the admin sdk, the times as iso8601 utc strings.
+class _UserMetadataAdminSdk implements UserMetadata {
+  final sdk.UserMetadata nativeMetadata;
+
+  _UserMetadataAdminSdk(this.nativeMetadata);
+
+  @override
+  String get creationTime => _utcString(nativeMetadata.creationTime)!;
+
+  /// Empty when the user never signed in.
+  @override
+  String get lastSignInTime => _utcString(nativeMetadata.lastSignInTime) ?? '';
+
+  @override
+  String? get lastRefreshTime => _utcString(nativeMetadata.lastRefreshTime);
+
+  @override
+  String toString() =>
+      'created $creationTime, signed in $lastSignInTime'
+      '${lastRefreshTime != null ? ', refreshed $lastRefreshTime' : ''}';
 }
 
 class _UserRecordAdminSdk
@@ -189,8 +245,8 @@ class _UserRecordAdminSdk
   @override
   bool get isAnonymous => nativeUserRecord.email?.trim().isEmpty ?? true;
 
-  //  @override
-  //  UserMetadata? get metadata => nativeUserRecord.metadata;
+  @override
+  UserMetadata get metadata => _UserMetadataAdminSdk(nativeUserRecord.metadata);
 
   @override
   String? get passwordHash => nativeUserRecord.passwordHash;
