@@ -1,5 +1,3 @@
-import 'dart:io' as io;
-
 import 'package:firebase_functions/firebase_functions.dart' as fn;
 import 'package:tekartik_common_utils/common_utils_import.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
@@ -9,6 +7,8 @@ import 'package:tekartik_firebase_admin_sdk/mixin_admin_sdk.dart';
 //import 'package:tekartik_firebase_auth/src/auth.dart';
 import 'package:tekartik_firebase_functions/firebase_functions.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.dart';
+
+import 'functions_emulator.dart';
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsFireUpRunner =
@@ -267,18 +267,16 @@ extension on FirebaseFunctionsAdminSdk {
   _FirebaseFunctionsAdminSdk get _impl => this as _FirebaseFunctionsAdminSdk;
 }
 
-final bool _isEmulator = io.Platform.environment['FIREBASE_EMULATOR'] == 'true';
-
 /// Public extension
 extension FirebaseFunctionsAdminSdkExt on FirebaseFunctionsAdminSdk {
   /// True if running on emulator
-  bool get isEmulator => _isEmulator;
+  bool get isEmulator => isFunctionsEmulator;
 }
 
 /// Public extension
 extension FirebaseFunctionsOnAdminSdkExt on FirebaseFunctions {
   /// True if running on emulator
-  bool get isAdminSdkEmulator => _isEmulator;
+  bool get isAdminSdkEmulator => isFunctionsEmulator;
 }
 
 extension on FirebaseFunctionsServiceAdminSdk {

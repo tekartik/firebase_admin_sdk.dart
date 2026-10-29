@@ -3,6 +3,7 @@ export 'package:firebase_functions/firebase_functions.dart'
 export 'package:tekartik_firebase_functions/firebase_functions.dart'
     show FirebaseFunctions, FirebaseFunctionsService;
 
+export 'functions_emulator.dart';
 export 'src/functions_admin_sdk.dart'
     if (dart.library.js_interop) 'src/platform/platform_web.dart'
     show

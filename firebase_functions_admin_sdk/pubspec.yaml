@@ -33,6 +33,11 @@ dependencies:
     git:
       url: https://github.com/tekartik/http.dart
       path: http
+  tekartik_platform_io:
+    git:
+      url: https://github.com/tekartik/platform.dart
+      path: platform_io
+    version: '>=0.4.0'
 dev_dependencies:
   lints: ">=6.1.0"
   # Native task requests in the tests.
