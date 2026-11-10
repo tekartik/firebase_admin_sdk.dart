@@ -215,8 +215,11 @@ class _FirebaseFunctionsAdminSdkHttp
         if (function is _HttpsFunction) {
           var method = request.method;
 
+          // The full path, the function name kept (`/<name>/` for the
+          // function root): behind a hosting rewrite the function sees it
+          // so, and festenao builds its cms links from it.
           final rewrittenUri = request.requestedUri.replace(
-            path: _handlerPath(uri.path),
+            path: _handlerPath(uri.pathSegments),
           );
           var hasBody = false;
           var body = Uint8List(0);
@@ -420,20 +423,12 @@ class _FirebaseFunctionsAdminSdkHttp
   }
 }
 
-/// The path an `onAdminSdkRequest` handler gets for the request [path]
-/// (`/<name>[/<rest>]`): `/<rest>`, or `/` without one, as the native runtime
-/// gives it (the function name and a trailing `/` removed).
-String _handlerPath(String path) {
-  var normalPath = path;
-  if (normalPath.startsWith('/')) {
-    normalPath = normalPath.substring(1);
-  }
-  if (normalPath.endsWith('/')) {
-    normalPath = normalPath.substring(0, normalPath.length - 1);
-  }
-  var rest = normalPath.split('/').skip(1).join('/');
-  return rest.isEmpty ? '/' : '/$rest';
-}
+/// The path an `onAdminSdkRequest` handler gets for the request
+/// [pathSegments] (`<name>`, `<rest>`...): the full path, `/<name>/` for the
+/// function root (the runner behaviour before 2026-11-10, kept: a handler
+/// building urls from `requestedUri` relies on it).
+String _handlerPath(List<String> pathSegments) =>
+    "/${pathSegments.join('/')}${pathSegments.length == 1 ? '/' : ''}";
 
 Future<void> _sendInternalError(HttpRequest request, Object e) async {
   var error = HttpResponseException.internalServerError(

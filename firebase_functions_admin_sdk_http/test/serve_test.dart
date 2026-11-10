@@ -89,7 +89,7 @@ void main() {
     expect(response.body, 'streamed');
   }, timeout: const Timeout(Duration(seconds: 30)));
 
-  test('the handler gets the path of the native runtime', () async {
+  test('the handler gets the full path, the function name kept', () async {
     var functions = await _serve((functions) {
       functions.https.onAdminSdkRequest(
         'hello',
@@ -111,14 +111,11 @@ void main() {
             )
             as Map;
 
-    // What firebase_functions (runFunctionsTest, the emulator) and the
-    // deployed function give: the function name is not in the path.
-    expect(await info('/hello'), {'url': '', 'path': '/'});
-    expect(await info('/hello/'), {'url': '', 'path': '/'});
-    expect(await info('/hello?p=1'), {'url': '?p=1', 'path': '/'});
-    expect(await info('/hello/sub1/sub2?p=1'), {
-      'url': 'sub1/sub2?p=1',
-      'path': '/sub1/sub2',
-    });
+    // As behind a hosting rewrite (the full path): festenao builds its cms
+    // links from requestedUri. A direct function url or the emulator give
+    // the path without the function name: not this runner.
+    expect(await info('/hello'), {'url': 'hello/', 'path': '/hello/'});
+    expect(await info('/hello/'), {'url': 'hello/', 'path': '/hello/'});
+    expect((await info('/hello/sub1/sub2?p=1'))['path'], '/hello/sub1/sub2');
   }, timeout: const Timeout(Duration(seconds: 30)));
 }
