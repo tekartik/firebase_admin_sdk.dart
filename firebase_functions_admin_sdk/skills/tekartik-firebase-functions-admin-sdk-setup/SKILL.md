@@ -16,7 +16,10 @@ description: >-
 Implements `tekartik_firebase_functions` on top of `package:firebase_functions`
 (the Dart Cloud Functions runtime) and `tekartik_firebase_admin_sdk`, so
 handlers written against the tekartik abstractions can be deployed as real
-Cloud Functions. Dart VM only: on the web the library resolves to a stub.
+Cloud Functions. Dart VM only: `functions_admin_sdk.dart` does not compile
+for the web (it reaches `dart:ffi` through `package:firebase_functions`);
+`package:tekartik_firebase_functions_admin_sdk/functions_emulator.dart`
+(`isFunctionsEmulator`) is the web safe part.
 
 ## Guidelines
 
@@ -71,12 +74,18 @@ Cloud Functions. Dart VM only: on the web the library resolves to a stub.
   abstract `fireUp(runner)` entry point exists (it calls `runFunctions` and
   hands a `FirebaseFunctionsAdminSdk`) and is fine for callable, task and
   pub/sub functions registered through `functions['name'] = ...`, but plain
-  http functions must go through `firebase.https.onRequest`.
+  http functions must go through `firebase.https.onRequest`. A callable
+  registered that way (`functions.https.onCall(handler)`) answers like the
+  other implementations: a `FirebaseFunctionsHttpsError` thrown by the
+  handler is converted (`toAdminSdk()`), a null result is
+  `{"result": null}`, any other exception is a 500 `INTERNAL`.
 
 * Errors: `FirebaseFunctionsHttpsError` / `FirebaseFunctionsHttpsErrorCode`
   are the tekartik `HttpsError` / `HttpsErrorCode`; the native error is
   `FirebaseFunctionsAdminSdkHttpsError` (`HttpResponseException`). Throw
-  `myError.toAdminSdk()` from a handler. `toAdminSdk()` maps every code to its
+  `myError.toAdminSdk()` from a native handler (`firebase.callHandler`): the
+  native runtime answers any other exception with a 500 `INTERNAL`, code and
+  message lost. `toAdminSdk()` maps every code to its
   http status (`invalidArgument` -> 400, `notFound` -> 404,
   `permissionDenied` -> 403, `unauthenticated` -> 401, `cancelled` -> 499,
   ...); `ok` or an unknown code becomes `500`/`UNKNOWN` with the original code
@@ -90,10 +99,11 @@ Cloud Functions. Dart VM only: on the web the library resolves to a stub.
   for an unsupported one. `wrapGlobalOptions`, `wrapCors`, `wrapInstances` and
   `wrapTimeoutSeconds` do the same for the other options.
 
-* Emulator: `FirebaseFunctionsAdminSdkExt.isEmulator` reads the
-  `FIREBASE_EMULATOR` environment variable (`'true'`), set by the firebase
-  emulator suite. Cast the handler argument
-  (`firebaseFunctions as FirebaseFunctionsAdminSdk`) to reach it.
+* Emulator: `FirebaseFunctionsAdminSdkExt.isEmulator` (and
+  `isFunctionsEmulator`) reads the `FUNCTIONS_EMULATOR` environment variable
+  (`'true'`), set by the firebase functions emulator. Cast the handler
+  argument (`firebaseFunctions as FirebaseFunctionsAdminSdk`) to reach it,
+  or read the top level `isFunctionsEmulator`.
 
 * For a local, emulator-free http server hosting the same handlers use
   `tekartik_firebase_functions_admin_sdk_http`; for the shared test suite and

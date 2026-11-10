@@ -9,6 +9,7 @@ import 'package:tekartik_firebase_functions/firebase_functions.dart';
 import 'package:tekartik_firebase_functions_http/firebase_functions_http_mixin.dart';
 
 import 'functions_emulator.dart';
+import 'https_error.dart';
 
 /// Callback type for the Admin SDK function registration.
 typedef TekartikFirebaseFunctionsFireUpRunner =
@@ -714,13 +715,23 @@ class _HttpsCallableFunctionAdminSdk implements HttpsCallableFunctionAdminSdk {
     required this.callableOptions,
   });
 
+  /// An [HttpsError] thrown by [handler] is answered with its code (as an
+  /// admin sdk error), a null result as `{"result": null}`.
   @override
   void register(String name) {
     httpsAdminSdk._functions.rawFunctions.https.onCall<Object>(
       (request, response) async {
         var callRequest = _CallRequestAdminSdk(request, response);
-        var result = await handler.call(callRequest);
-        return fn.CallableResult<Object>(result as Object);
+        Object? result;
+        try {
+          result = await handler.call(callRequest);
+        } on HttpsError catch (e, st) {
+          Error.throwWithStackTrace(e.toAdminSdk(), st);
+        }
+        if (result == null) {
+          return _CallableNullResultAdminSdk();
+        }
+        return fn.CallableResult<Object>(result);
       },
       // ignore: non_const_argument_for_const_parameter
       name: name,
@@ -744,6 +755,20 @@ class _HttpsCallableFunctionAdminSdk implements HttpsCallableFunctionAdminSdk {
       timeoutSeconds: globalOptions.timeoutSeconds,
     );
   }
+}
+
+/// A null callable result, answered `{"result": null}` (a native
+/// [fn.CallableResult] cannot hold null).
+class _CallableNullResultAdminSdk extends fn.CallableResult<Object> {
+  // The data is only read by a streaming call (not used by the tekartik
+  // clients), sent as an empty map there.
+  _CallableNullResultAdminSdk() : super(const <String, Object?>{});
+
+  @override
+  fn.Response toResponse() => fn.Response.ok(
+    jsonEncode({'result': null}),
+    headers: {'Content-Type': 'application/json'},
+  );
 }
 
 class _HttpsFunctionAdminSdk implements HttpsFunctionAdminSdk {

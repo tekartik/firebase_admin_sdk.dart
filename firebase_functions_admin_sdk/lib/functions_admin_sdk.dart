@@ -1,3 +1,10 @@
+/// Dart Cloud Functions (`package:firebase_functions`, re-exported) with the
+/// `tekartik_firebase_functions` abstractions: the `Firebase` extension
+/// (`firebaseApp`, `httpsHandler`, `callHandler`...),
+/// `firebaseFunctionsServiceAdminSdk`, errors (`toAdminSdk()`) and the task
+/// queue service. Dart VM only.
+library;
+
 export 'package:firebase_functions/firebase_functions.dart'
     if (dart.library.js_interop) 'src/platform/platform_web.dart';
 export 'package:tekartik_firebase_functions/firebase_functions.dart'
