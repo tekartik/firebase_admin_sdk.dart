@@ -7,7 +7,9 @@ import 'package:tekartik_firebase/firebase_mixin.dart';
 
 import 'firebase_admin_sdk_common.dart';
 
-/// AdminSdk firebase api
+/// The admin sdk [Firebase], a single instance: `initializeApp(options:)`
+/// uses the application default credentials (or the emulators),
+/// `initializeAppWithServiceAccountMap` a service account.
 FirebaseAdminSdk get firebaseAdminSdk => prvFirebaseAdminSdk;
 
 /// Admin SDK specific firebase app options.

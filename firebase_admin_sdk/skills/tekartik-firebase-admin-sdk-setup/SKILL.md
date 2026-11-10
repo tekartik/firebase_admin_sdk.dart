@@ -12,7 +12,11 @@ description: >-
 
 Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
 `tekartik_firebase_auth` and `tekartik_firebase_storage` on top of the Dart
-`firebase_admin_sdk` package. Dart VM only: on the web every getter throws.
+`firebase_admin_sdk` package. Dart VM only: on the web the services of
+`firebase_admin_sdk.dart`, `firebase_auth_admin_sdk.dart` and
+`firebase_storage_admin_sdk.dart` throw `UnsupportedError`, and
+`firestore_admin_sdk.dart` does not compile (the native sdk uses `dart:ffi`):
+keep the admin sdk imports in VM only files.
 
 ## Guidelines
 
@@ -27,7 +31,9 @@ Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
 * `firebaseAdminSdk` is the `FirebaseAdminSdk` entry point (`Firebase` and
   `FirebaseAdmin`). `initializeApp(options:, name:)` is synchronous
   (`initializeAppAsync` exists too). Only `projectId` and `storageBucket` of
-  `AppOptions` reach the native SDK; the other fields are ignored.
+  `AppOptions` reach the native SDK; the other fields are ignored. Initialize
+  a name once: a second `initializeApp` of the same name gives another
+  `FirebaseApp` without the products registered on the first one.
 * Credentials: with no `options` the native SDK reads `FIREBASE_CONFIG`,
   `GOOGLE_APPLICATION_CREDENTIALS` (application default credentials, the
   Cloud Run / Cloud Functions case) and `GOOGLE_CLOUD_PROJECT`/`GCLOUD_PROJECT`.
@@ -52,25 +58,34 @@ Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
   `supportsTrackChanges` is `false`: `onSnapshot` and `documentChanges` throw
   `UnsupportedError`. `supportsAggregateQueries` is `false` (`aggregate`
   throws) but `Query.count()` works. `listCollections`, `select`, `Timestamp`,
-  `Blob`, `GeoPoint`, `VectorValue` and `FieldValue` are supported.
+  `Blob`, `GeoPoint`, `VectorValue` and `FieldValue` are supported. A cursor
+  (`startAt(values:)`...) can give fewer values than the order bys (they are
+  compared as a prefix) and `null` values.
   `collRef.listDocuments()` also lists the missing documents that only hold
   sub collections (`supportsListMissingDocuments`); the native call only
   returns the first page of the backend (about 300 documents) and paging
   options are applied locally.
 * Auth is server side only: `supportsCurrentUser` is `false` (no sign in),
   `supportsListUsers` is `true`. `listUsers`, `getUser` and `getUserByEmail`
-  are on `FirebaseAuth` and return `null` when the user is missing (or on any
-  error). `createUser`, `deleteUser` and the `getOrCreateUser` helper are on
+  are on `FirebaseAuth`; `getUser` and `getUserByEmail` return `null` when the
+  user is missing and throw the other errors (permission, network).
+  `createUser`, `deleteUser` and the `getOrCreateUser` helper are on
   `FirebaseAuthAdmin` from `package:tekartik_firebase_auth/auth_admin.dart`:
-  cast the auth. `createUser` only forwards `uid`, `email`, `password` and
-  `disabled` (`displayName`, `phoneNumber`, `emailVerified` are ignored).
+  cast the auth. `createUser` sends every field of the request (`uid`,
+  `email`, `password`, `displayName`, `phoneNumber`, `photoURL`,
+  `emailVerified`, `disabled`). `UserRecord.isAnonymous` means "no email"
+  here (a phone user reads as anonymous).
   `verifyIdToken(idToken, checkRevoked:)` returns a `DecodedIdToken` (`uid`,
   `signInProvider` such as `'anonymous'`), the `UserRecord.metadata` times
   (`creationTime`, `lastSignInTime`, `lastRefreshTime`) are iso8601 utc
   strings.
 * Storage: `storage.bucket()` needs `storageBucket` in the app options or an
   explicit name, otherwise `StateError`. `Reference.getDownloadUrl()` throws
-  `UnsupportedError`. `File.metadata` is always `null`: `await getMetadata()`.
+  `UnsupportedError`. A file of `getFiles` has its `metadata`; a file made with
+  `bucket.file(path)` has none: `await getMetadata()`. `getFiles` reads every
+  page of the listing in one call: `maxResults` is only the page size,
+  `pageToken` and `autoPaginate` are ignored and `nextQuery` is always null;
+  narrow it with a `prefix`.
 * Cloud Tasks: `firebaseTasksServiceAdminSdk.taskQueue(app, functionName,
   region:)` targets a task dispatched function (`tasks.onTaskDispatched` in
   `tekartik_firebase_functions_admin_sdk`); `null` region means `us-central1`.
@@ -78,6 +93,7 @@ Implements `tekartik_firebase`, `tekartik_firebase_firestore`,
   de-duplication, `scheduleDelay` or `scheduleTime` (both set throws
   `ArgumentError`), `dispatchDeadlineSeconds`, `headers` and `uri`, required
   with the Cloud Tasks emulator. `delete(id)` removes a pending task.
+  `scheduleDelay` is sent in whole seconds (truncated).
 * Pub/Sub: `firebasePubsubServiceAdminSdk.topic(app, name)`; call
   `createIfNeeded()` once (409 is ignored), then `publish(map)`,
   `publishText(text)` or `publishBytes(bytes)`, each returning the message id.
@@ -126,7 +142,6 @@ Future<void> main() async {
 ### Managing users
 
 ```dart
-import 'package:tekartik_firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:tekartik_firebase_admin_sdk/firebase_auth_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth_admin.dart';
 

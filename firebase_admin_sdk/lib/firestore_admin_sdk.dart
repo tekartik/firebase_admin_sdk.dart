@@ -1,3 +1,8 @@
+/// Firestore with admin credentials: `firestoreServiceAdminSdk.firestore(app)`.
+///
+/// Dart VM only, this library does not compile on the web.
+library;
+
 export 'package:tekartik_firebase_firestore/firestore.dart';
 
 export 'src/firebase_admin_sdk_common.dart'

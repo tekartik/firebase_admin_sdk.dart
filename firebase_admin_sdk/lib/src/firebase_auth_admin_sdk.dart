@@ -118,9 +118,10 @@ class AuthAdminSdk
         uid: request.uid,
         email: request.email,
         password: request.password,
-        //displayName: request.displayName,
-        //phoneNumber: request.phoneNumber,
-        //emailVerified: request.emailVerified,
+        displayName: request.displayName,
+        phoneNumber: request.phoneNumber,
+        photoURL: request.photoURL,
+        emailVerified: request.emailVerified,
         disabled: request.disabled,
       ),
     );

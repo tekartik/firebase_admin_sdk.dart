@@ -136,16 +136,21 @@ abstract class FirebaseTasksServiceAdminSdk {
   });
 }
 
-/// AdminSdk extension (if any)
+/// The admin sdk [Firebase] (`firebaseAdminSdk`): its apps have admin
+/// credentials.
 abstract class FirebaseAdminSdk implements Firebase, FirebaseAdmin {
-  /// Initialize rest with a service account json map.
+  /// Initializes an app with the credentials of a service account json [map]
+  /// (`project_id`, `client_email`, `private_key`, `client_id`).
+  ///
+  /// The project is the one of the service account; only
+  /// [FirebaseAppOptions.storageBucket] of [options] is used.
   Future<FirebaseApp> initializeAppWithServiceAccountMap(
     Map map, {
 
-    /// Overiden options (storage bucket, database url, ...)
+    /// Only its storage bucket is used.
     FirebaseAppOptions? options,
   });
 }
 
-/// AdminSdk app extension (if any)
+/// An app of [FirebaseAdminSdk] (admin credentials).
 abstract class FirebaseAppAdminSdk implements FirebaseApp {}

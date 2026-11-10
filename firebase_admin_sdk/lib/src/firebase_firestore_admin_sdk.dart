@@ -455,20 +455,16 @@ class _QueryAdminSdk with QueryMixin implements Query {
     return _wrapQuery(native, queryInfo: newQueryInfo);
   }
 
-  List<Object> _wrapBoundaryValues(List? values) {
+  /// The native cursor values of [values], a prefix of the order by fields
+  /// (Firestore compares the given values only; the native sdk rejects more
+  /// values than order bys). A value can be null.
+  List<Object?> _wrapBoundaryValues(List? values) {
     if (values == null) {
-      throw ArgumentError(
-        'values must be provided for all orderBy fields: $_orderByKey',
-      );
+      throw ArgumentError('values or snapshot must be provided');
     }
-    final wrapped = <Object>[];
-    if (values.length < _orderByKey.length) {
-      throw ArgumentError(
-        'values must be provided for all orderBy fields: $_orderByKey',
-      );
-    }
-    for (var (index, key) in _orderByKey.indexed) {
-      var value = values.elementAt(index);
+    final wrapped = <Object?>[];
+    for (var (index, value) in values.indexed) {
+      var key = index < _orderByKey.length ? _orderByKey[index] : null;
       // Invalid argument(s): When ordering with FieldPath.documentId(), the cursor must be a DocumentReference.
       if (key == firestoreNameFieldPath || key == sdk.FieldPath.documentId) {
         if (value is String) {
@@ -477,7 +473,7 @@ class _QueryAdminSdk with QueryMixin implements Query {
           value = value.ref;
         }
       }
-      wrapped.add(firestoreAdminSdk._wrapValue(value)!);
+      wrapped.add(firestoreAdminSdk._wrapValue(value));
     }
     return wrapped;
   }
