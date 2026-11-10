@@ -111,21 +111,38 @@ class AuthAdminSdk
     );
   }
 
+  /// Creates the user of [request].
+  ///
+  /// An existing uid or email throws a [StateError]
+  /// (`uid-already-exists: ...`, `email-already-exists: ...`), as the other
+  /// admin backends do, not the native `FirebaseAuthAdminException`.
   @override
   Future<UserRecord> createUser(FirebaseAuthCreateUserRequest request) async {
-    var nativeUser = await nativeInstance.createUser(
-      admin_sdk.CreateRequest(
-        uid: request.uid,
-        email: request.email,
-        password: request.password,
-        displayName: request.displayName,
-        phoneNumber: request.phoneNumber,
-        photoURL: request.photoURL,
-        emailVerified: request.emailVerified,
-        disabled: request.disabled,
-      ),
-    );
-    return _UserRecordAdminSdk(nativeUser);
+    try {
+      var nativeUser = await nativeInstance.createUser(
+        admin_sdk.CreateRequest(
+          uid: request.uid,
+          email: request.email,
+          password: request.password,
+          displayName: request.displayName,
+          phoneNumber: request.phoneNumber,
+          photoURL: request.photoURL,
+          emailVerified: request.emailVerified,
+          disabled: request.disabled,
+        ),
+      );
+      return _UserRecordAdminSdk(nativeUser);
+    } on admin_sdk.FirebaseAuthAdminException catch (e, st) {
+      var errorCode = e.errorCode;
+      if (errorCode == admin_sdk.AuthClientErrorCode.emailAlreadyExists ||
+          errorCode == admin_sdk.AuthClientErrorCode.uidAlreadyExists) {
+        Error.throwWithStackTrace(
+          StateError('${errorCode.code}: ${e.message}'),
+          st,
+        );
+      }
+      rethrow;
+    }
   }
 
   @override

@@ -73,7 +73,9 @@ keep the admin sdk imports in VM only files.
   `FirebaseAuthAdmin` from `package:tekartik_firebase_auth/auth_admin.dart`:
   cast the auth. `createUser` sends every field of the request (`uid`,
   `email`, `password`, `displayName`, `phoneNumber`, `photoURL`,
-  `emailVerified`, `disabled`). `UserRecord.isAnonymous` means "no email"
+  `emailVerified`, `disabled`); an existing email or uid throws a
+  `StateError` (`email-already-exists: ...`, `uid-already-exists: ...`), as
+  the other admin backends. `UserRecord.isAnonymous` means "no email"
   here (a phone user reads as anonymous).
   `verifyIdToken(idToken, checkRevoked:)` returns a `DecodedIdToken` (`uid`,
   `signInProvider` such as `'anonymous'`), the `UserRecord.metadata` times

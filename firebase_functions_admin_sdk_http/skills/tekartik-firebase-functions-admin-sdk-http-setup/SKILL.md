@@ -40,7 +40,10 @@ tests and dev runs need neither the firebase emulator nor a deployment.
   runner (`TekartikFirebaseFunctionsAdminSdkHttpRunner`, which registers the
   functions) and only then binds and serves, so registration must be complete
   when the runner returns. `fireUp` never completes early but returns once the
-  server listens; the request loop runs in the background.
+  server listens; the request loop runs in the background and serves the
+  requests concurrently (a function may call another function of the same
+  server, a slow one does not hold the others). A handler error is answered
+  500, the server keeps serving.
 
 * `httpServerFactory` defaults to `httpServerFactoryMemory` (from
   `package:tekartik_http/http_memory.dart`), which is what the shared
@@ -62,15 +65,21 @@ tests and dev runs need neither the firebase emulator nor a deployment.
 * Registration methods take the **function name first** and that name is the
   first url path segment (`http://host:port/<name>`):
   - `functions.https.onAdminSdkRequest(name, handler)` — raw http, the handler
-    receives a `Request` whose uri is rewritten to `/<name>/...`, and returns
-    a `Response`.
+    receives a `Request` and returns a `Response` (its body may be a
+    stream). As in `package:firebase_functions` (emulator, deployed), the
+    path the handler sees has no function name: `/<name>/a/b?x=1` gives
+    `requestedUri.path` `/a/b` and `request.url` `a/b?x=1`, `/<name>` gives
+    `/` and an empty `url`.
   - `functions.https.onAdminSdkCall<T>(name, handler)` — callable: `POST` a
     `{'data': ...}` json body; the result of `CallableResult<T>` is written
     back. A thrown `HttpResponseException` (i.e.
     `FirebaseFunctionsHttpsError(...).toAdminSdk()`) is serialized with its
-    status code, anything else becomes a `500 INTERNAL`. The caller's uid is
-    read from the `firebaseFunctionsHttpHeaderUid` header, exposed as
-    `request.auth?.uid`.
+    status code, anything else becomes a `500 INTERNAL` (a tekartik
+    `FirebaseFunctionsHttpsError` too: throw its `toAdminSdk()`), a body
+    that is not json a `500` text answer. The caller's uid is read from the
+    `firebaseFunctionsHttpHeaderUid` header, exposed as `request.auth?.uid`:
+    it is not verified (any client can send it, release builds included,
+    unlike the tekartik http servers which honour it in debug only).
   - `functions.tasks.onAdminSdkTaskDispatched(name, handler)` — `POST` a
     `{'data': ...}` json body, answered with `204`
     (`taskDispatchedNoContentStatusCode`). The `X-CloudTasks-*` headers
@@ -154,9 +163,7 @@ import 'dart:convert';
 
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
-import 'package:tekartik_http/http_client.dart';
 import 'package:tekartik_http/http_memory.dart';
-import 'package:tekartik_http/http_server.dart';
 
 /// [functions] comes from a `fireUp` runner (memory server here).
 Future<void> exercise(FirebaseFunctionsAdminSdkHttp functions) async {
@@ -210,9 +217,7 @@ import 'dart:convert';
 import 'package:tekartik_firebase/firebase.dart';
 import 'package:tekartik_firebase_functions_admin_sdk/functions_admin_sdk.dart';
 import 'package:tekartik_firebase_functions_admin_sdk_http/functions_admin_sdk_http.dart';
-import 'package:tekartik_http/http_client.dart';
 import 'package:tekartik_http/http_memory.dart';
-import 'package:tekartik_http/http_server.dart';
 
 Future<void> publishMessage(
   FirebaseFunctionsAdminSdkHttp functions,

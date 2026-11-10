@@ -15,6 +15,10 @@ import 'package:tekartik_firebase_admin_sdk/firestore_admin_sdk.dart';
 import 'package:tekartik_firebase_auth/auth_admin.dart';
 import 'package:test/test.dart';
 
+/// The email and uid of an account that exists on the fake emulator.
+const _existingEmail = 'exists@example.com';
+const _existingUid = 'existing_uid';
+
 /// A fake Firestore and Auth emulator recording the requests.
 class _FakeEmulator {
   late final io.HttpServer server;
@@ -32,7 +36,26 @@ class _FakeEmulator {
             : jsonDecode(body) as Map<String, Object?>,
       ));
       Object? responseBody;
-      if (path.contains('identitytoolkit')) {
+      var statusCode = 200;
+      var bodyMap = requests.last.$2;
+      if (path.contains('identitytoolkit') &&
+          (bodyMap['email'] == _existingEmail ||
+              bodyMap['localId'] == _existingUid)) {
+        // An existing account, as the auth emulator answers it.
+        statusCode = 400;
+        var message = bodyMap['email'] == _existingEmail
+            ? 'EMAIL_EXISTS'
+            : 'DUPLICATE_LOCAL_ID';
+        responseBody = {
+          'error': {
+            'code': 400,
+            'message': message,
+            'errors': [
+              {'message': message, 'reason': 'invalid', 'domain': 'global'},
+            ],
+          },
+        };
+      } else if (path.contains('identitytoolkit')) {
         // Auth emulator: an account creation answers its uid, a lookup the
         // created user.
         responseBody = path.endsWith(':lookup')
@@ -57,7 +80,7 @@ class _FakeEmulator {
               };
       }
       request.response
-        ..statusCode = 200
+        ..statusCode = statusCode
         ..headers.contentType = io.ContentType.json
         ..write(jsonEncode(responseBody));
       await request.response.close();
@@ -231,6 +254,54 @@ void main() {
       }
     });
   });
+
+  test(
+    'auth createUser of an existing email or uid throws a StateError',
+    () async {
+      // As the other admin backends (auth_sembast, auth_sdb, auth_local) and
+      // the shared firebaseAuthAdminTests: not the native exception.
+      await emulator.run(() async {
+        var app = firebaseAdminSdk.initializeApp(
+          options: AppOptions(projectId: 'demo-offline'),
+          name: 'offline_${++_appIndex}',
+        );
+        try {
+          var auth = firebaseAuthServiceAdminSdk.auth(app) as FirebaseAuthAdmin;
+          await expectLater(
+            auth.createUser(
+              FirebaseAuthCreateUserRequest(email: _existingEmail),
+            ),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                contains('email-already-exists'),
+              ),
+            ),
+          );
+          await expectLater(
+            auth.createUser(FirebaseAuthCreateUserRequest(uid: _existingUid)),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                contains('uid-already-exists'),
+              ),
+            ),
+          );
+          await expectLater(
+            auth.createUserWithEmailAndPassword(
+              email: _existingEmail,
+              password: 'password1',
+            ),
+            throwsA(isA<StateError>()),
+          );
+        } finally {
+          await app.delete();
+        }
+      });
+    },
+  );
 
   test('firebaseAdminSdk is a single instance', () async {
     expect(identical(firebaseAdminSdk, firebaseAdminSdk), isTrue);

@@ -1,9 +1,14 @@
+/// Runs the `tekartik_firebase_functions_admin_sdk` handlers (the Dart Cloud
+/// Functions runtime) on a plain `tekartik_http` server, in memory or on a
+/// port: [FirebaseFunctionsServiceAdminSdkHttp], its `fireUp` runner and the
+/// `onAdminSdk*` registrations. A development tool (the caller uid is not
+/// verified). Dart VM only.
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:path/path.dart';
-import 'package:tekartik_common_utils/byte_utils.dart';
 import 'package:tekartik_common_utils/int_utils.dart';
 import 'package:tekartik_firebase/firebase.dart';
 import 'package:tekartik_firebase/firebase_mixin.dart';
@@ -41,7 +46,10 @@ abstract class FirebaseFunctionsServiceAdminSdkHttp
     port: port,
   );
 
-  /// Starts an HTTP server and calls [runner] to register functions on it.
+  /// Calls [runner] to register the functions, then starts the http server;
+  /// completes once it listens (the requests are then served in the
+  /// background, concurrently). The runner gets the
+  /// [FirebaseFunctionsAdminSdkHttp] that holds the `httpServer`.
   Future<void> fireUp(
     FirebaseApp app,
     TekartikFirebaseFunctionsAdminSdkHttpRunner runner,
@@ -174,243 +182,257 @@ class _FirebaseFunctionsAdminSdkHttp
     unawaited(
       Future.sync(() async {
         await for (HttpRequest request in requestServer) {
-          var uri = request.uri;
-          //var handled = false;
-          // /test
-          var functionKey = uri.pathSegments.firstOrNull;
-          try {
-            var function = functionKey == null ? null : _functions[functionKey];
-            if (function == null) {
-              // Answered, otherwise the request never completes.
-              await _sendError(
-                request.response,
-                HttpResponseException.notFound(
-                  message: 'Function ${functionKey ?? '/'} not found',
-                ),
-              );
-            } else {
-              if (function is _HttpsFunction) {
-                var method = request.method;
-
-                // expect an absolute uri, ending with /
-                var pathSegments = List.of(uri.pathSegments);
-                var path =
-                    '/${url.joinAll(pathSegments)}${pathSegments.length == 1 ? '/' : ''}';
-
-                final rewrittenUri = request.requestedUri.replace(path: path);
-                var hasBody = false;
-                var body = Uint8List(0);
-                if (request.contentLength != 0 &&
-                    request.contentLength != null) {
-                  hasBody = true;
-                  body = await httpStreamGetBytes(request);
-                }
-                var adminSdkRequest = Request(
-                  method,
-                  rewrittenUri,
-                  protocolVersion: '1.1',
-                  headers: request.headers.toMap(),
-                  body: hasBody ? body : null,
-                );
-                var adminSdkResponse = await function.handler(
-                  this,
-                  adminSdkRequest,
-                );
-                request.response.statusCode = adminSdkResponse.statusCode;
-                adminSdkResponse.headers.forEach((name, value) {
-                  request.response.headers.set(name, value);
-                });
-                if ((adminSdkResponse.contentLength ?? 0) > 0) {
-                  var bodyBytes = await listStreamGetBytes(
-                    adminSdkResponse.read(),
-                  );
-                  request.response.add(bodyBytes);
-                }
-                await request.response.close();
-              } else if (function is _HttpsCall) {
-                var userId = request.headers.value(
-                  firebaseFunctionsHttpHeaderUid,
-                );
-                var body = await httpStreamGetBytes(request);
-                var json = jsonDecode(utf8.decode(body)) as Map;
-                var data = json['data'];
-
-                var callableRequest = CallableRequest(
-                  Request(
-                    request.method,
-                    request.requestedUri,
-                    headers: request.headers.toMap(),
-                  ),
-                  data,
-                  null,
-                  auth: userId == null ? null : AuthData(uid: userId),
-                );
-                var callableResponse = CallableResponse<Object>(
-                  acceptsStreaming: false,
-                );
-
-                try {
-                  var result = await function.handler(
-                    this,
-                    callableRequest,
-                    callableResponse,
-                  );
-
-                  var response = result.toResponse();
-                  request.response.statusCode = response.statusCode;
-                  response.headers.forEach((name, value) {
-                    request.response.headers.set(name, value);
-                  });
-
-                  request.response.write(await response.readAsString());
-                  await request.response.close();
-                } on HttpResponseException catch (e) {
-                  var response = request.response;
-
-                  await _sendError(response, e);
-                } catch (e) {
-                  var httpsError = HttpResponseException.internalServerError(
-                    message: 'Internal error',
-                    details: [
-                      {'exception': '$e'},
-                    ],
-                  );
-                  var response = request.response;
-
-                  await _sendError(response, httpsError);
-                }
-                /*
-                  request.response.statusCode = e.code;
-                  request.response.headers.set(
-                    'Content-Type',
-                    'application/json; charset=utf-8',
-                  );
-                  request.response.write(
-                    jsonEncode({
-                      'error': {
-                        'code': e.code,
-                        'message': e.message,
-                        'details': e.details,
-                      },
-                    }),
-                  );
-                  await request.response.close();
-                  return;
-                }*/
-              } else if (function is _HttpsTask) {
-                var headers = request.headers;
-                var userId = headers.value(firebaseFunctionsHttpHeaderUid);
-                var bodyBytes = await httpStreamGetBytes(request);
-                Object? data;
-                if (bodyBytes.isNotEmpty) {
-                  var json = jsonDecode(utf8.decode(bodyBytes));
-                  if (json is Map) {
-                    data = json['data'];
-                  }
-                }
-                var taskRequest = TaskRequest<Object?>(
-                  Request(
-                    request.method,
-                    request.requestedUri,
-                    headers: headers.toMap(),
-                  ),
-                  data,
-                  queueName:
-                      headers.value(cloudTasksHeaderQueueName) ?? function.name,
-                  id:
-                      headers.value(cloudTasksHeaderTaskName) ??
-                      '${++_lastTaskId}',
-                  retryCount:
-                      parseInt(headers.value(cloudTasksHeaderTaskRetryCount)) ??
-                      0,
-                  executionCount:
-                      parseInt(
-                        headers.value(cloudTasksHeaderTaskExecutionCount),
-                      ) ??
-                      0,
-                  scheduledTime:
-                      headers.value(cloudTasksHeaderTaskEta) ??
-                      DateTime.now().toUtc().toIso8601String(),
-                  previousResponse: parseInt(
-                    headers.value(cloudTasksHeaderTaskPreviousResponse),
-                  ),
-                  retryReason: headers.value(cloudTasksHeaderTaskRetryReason),
-                  auth: userId == null ? null : TaskAuthData(uid: userId),
-                );
-                try {
-                  await function.handler(this, taskRequest);
-                  // No content, as done by the native implementation.
-                  request.response.statusCode =
-                      taskDispatchedNoContentStatusCode;
-                  await request.response.close();
-                } catch (e) {
-                  await _sendInternalError(request, e);
-                }
-              } else if (function is _HttpsPubsub) {
-                var bodyBytes = await httpStreamGetBytes(request);
-                var json =
-                    jsonDecode(utf8.decode(bodyBytes)) as Map<String, Object?>;
-                var event = CloudEvent<PubsubMessage>.fromJson(
-                  json.cast<String, dynamic>(),
-                  PubsubMessage.fromJson,
-                );
-                try {
-                  await function.handler(this, event);
-                  request.response.statusCode = httpStatusCodeOk;
-                  await request.response.close();
-                } catch (e) {
-                  await _sendInternalError(request, e);
-                }
-              }
-              /*
-            if (function is HttpsFunctionHttp) {
-              final rewrittenUri = Uri(
-                pathSegments: uri.pathSegments.sublist(1),
-                query: uri.query,
-                fragment: uri.fragment,
-              );
-              //io.HttpRequest commonRequest = new io.HttpRequest(request, url, request.uri.path);
-              ExpressHttpRequest httpRequest = await asExpressHttpRequestHttp(
-                request,
-                rewrittenUri,
-              );
-              // cors?
-              var cors = function.options?.cors ?? false;
-              if (cors) {
-                httpRequest.response.headers
-                  ..set('Access-Control-Allow-Origin', '*')
-                  ..set('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
-                var requestHeaders =
-                    request.headers['Access-Control-Request-Headers'];
-                if (requestHeaders != null) {
-                  httpRequest.response.headers.set(
-                    'Access-Control-Allow-Headers',
-                    requestHeaders,
-                  );
-                }
-              }
-
-              function.handler(httpRequest);
-              handled = true;
-            }
-
-             */
-            }
-          } catch (e) {
-            try {
-              request.response.statusCode = 500;
-            } catch (_) {}
-            try {
-              request.response.write('Error: $e');
-            } catch (_) {}
-            await request.response.close();
-          }
+          // Not awaited: the requests are served concurrently, as the
+          // native runtime does (a function may call another one).
+          unawaited(_handleRequest(request));
         }
       }),
     );
     httpServer = requestServer;
     return requestServer;
   }
+
+  /// Serves [request] with the function of its first path segment.
+  ///
+  /// Any error is answered 500 when nothing was sent yet; it never ends
+  /// the server.
+  Future<void> _handleRequest(HttpRequest request) async {
+    var uri = request.uri;
+    //var handled = false;
+    // /test
+    var functionKey = uri.pathSegments.firstOrNull;
+    try {
+      var function = functionKey == null ? null : _functions[functionKey];
+      if (function == null) {
+        // Answered, otherwise the request never completes.
+        await _sendError(
+          request.response,
+          HttpResponseException.notFound(
+            message: 'Function ${functionKey ?? '/'} not found',
+          ),
+        );
+      } else {
+        if (function is _HttpsFunction) {
+          var method = request.method;
+
+          final rewrittenUri = request.requestedUri.replace(
+            path: _handlerPath(uri.path),
+          );
+          var hasBody = false;
+          var body = Uint8List(0);
+          if (request.contentLength != 0 && request.contentLength != null) {
+            hasBody = true;
+            body = await httpStreamGetBytes(request);
+          }
+          var adminSdkRequest = Request(
+            method,
+            rewrittenUri,
+            protocolVersion: '1.1',
+            headers: request.headers.toMap(),
+            body: hasBody ? body : null,
+          );
+          var adminSdkResponse = await function.handler(this, adminSdkRequest);
+          request.response.statusCode = adminSdkResponse.statusCode;
+          adminSdkResponse.headers.forEach((name, value) {
+            request.response.headers.set(name, value);
+          });
+          // The body is sent as a stream: its length is not always known
+          // (a `Response.ok(stream)`).
+          await request.response.addStream(
+            adminSdkResponse.read().map(
+              (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
+            ),
+          );
+          await request.response.close();
+        } else if (function is _HttpsCall) {
+          var userId = request.headers.value(firebaseFunctionsHttpHeaderUid);
+          var body = await httpStreamGetBytes(request);
+          var json = jsonDecode(utf8.decode(body)) as Map;
+          var data = json['data'];
+
+          var callableRequest = CallableRequest(
+            Request(
+              request.method,
+              request.requestedUri,
+              headers: request.headers.toMap(),
+            ),
+            data,
+            null,
+            auth: userId == null ? null : AuthData(uid: userId),
+          );
+          var callableResponse = CallableResponse<Object>(
+            acceptsStreaming: false,
+          );
+
+          try {
+            var result = await function.handler(
+              this,
+              callableRequest,
+              callableResponse,
+            );
+
+            var response = result.toResponse();
+            request.response.statusCode = response.statusCode;
+            response.headers.forEach((name, value) {
+              request.response.headers.set(name, value);
+            });
+
+            request.response.write(await response.readAsString());
+            await request.response.close();
+          } on HttpResponseException catch (e) {
+            var response = request.response;
+
+            await _sendError(response, e);
+          } catch (e) {
+            var httpsError = HttpResponseException.internalServerError(
+              message: 'Internal error',
+              details: [
+                {'exception': '$e'},
+              ],
+            );
+            var response = request.response;
+
+            await _sendError(response, httpsError);
+          }
+          /*
+              request.response.statusCode = e.code;
+              request.response.headers.set(
+                'Content-Type',
+                'application/json; charset=utf-8',
+              );
+              request.response.write(
+                jsonEncode({
+                  'error': {
+                    'code': e.code,
+                    'message': e.message,
+                    'details': e.details,
+                  },
+                }),
+              );
+              await request.response.close();
+              return;
+            }*/
+        } else if (function is _HttpsTask) {
+          var headers = request.headers;
+          var userId = headers.value(firebaseFunctionsHttpHeaderUid);
+          var bodyBytes = await httpStreamGetBytes(request);
+          Object? data;
+          if (bodyBytes.isNotEmpty) {
+            var json = jsonDecode(utf8.decode(bodyBytes));
+            if (json is Map) {
+              data = json['data'];
+            }
+          }
+          var taskRequest = TaskRequest<Object?>(
+            Request(
+              request.method,
+              request.requestedUri,
+              headers: headers.toMap(),
+            ),
+            data,
+            queueName:
+                headers.value(cloudTasksHeaderQueueName) ?? function.name,
+            id: headers.value(cloudTasksHeaderTaskName) ?? '${++_lastTaskId}',
+            retryCount:
+                parseInt(headers.value(cloudTasksHeaderTaskRetryCount)) ?? 0,
+            executionCount:
+                parseInt(headers.value(cloudTasksHeaderTaskExecutionCount)) ??
+                0,
+            scheduledTime:
+                headers.value(cloudTasksHeaderTaskEta) ??
+                DateTime.now().toUtc().toIso8601String(),
+            previousResponse: parseInt(
+              headers.value(cloudTasksHeaderTaskPreviousResponse),
+            ),
+            retryReason: headers.value(cloudTasksHeaderTaskRetryReason),
+            auth: userId == null ? null : TaskAuthData(uid: userId),
+          );
+          try {
+            await function.handler(this, taskRequest);
+            // No content, as done by the native implementation.
+            request.response.statusCode = taskDispatchedNoContentStatusCode;
+            await request.response.close();
+          } catch (e) {
+            await _sendInternalError(request, e);
+          }
+        } else if (function is _HttpsPubsub) {
+          var bodyBytes = await httpStreamGetBytes(request);
+          var json = jsonDecode(utf8.decode(bodyBytes)) as Map<String, Object?>;
+          var event = CloudEvent<PubsubMessage>.fromJson(
+            json.cast<String, dynamic>(),
+            PubsubMessage.fromJson,
+          );
+          try {
+            await function.handler(this, event);
+            request.response.statusCode = httpStatusCodeOk;
+            await request.response.close();
+          } catch (e) {
+            await _sendInternalError(request, e);
+          }
+        }
+        /*
+        if (function is HttpsFunctionHttp) {
+          final rewrittenUri = Uri(
+            pathSegments: uri.pathSegments.sublist(1),
+            query: uri.query,
+            fragment: uri.fragment,
+          );
+          //io.HttpRequest commonRequest = new io.HttpRequest(request, url, request.uri.path);
+          ExpressHttpRequest httpRequest = await asExpressHttpRequestHttp(
+            request,
+            rewrittenUri,
+          );
+          // cors?
+          var cors = function.options?.cors ?? false;
+          if (cors) {
+            httpRequest.response.headers
+              ..set('Access-Control-Allow-Origin', '*')
+              ..set('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
+            var requestHeaders =
+                request.headers['Access-Control-Request-Headers'];
+            if (requestHeaders != null) {
+              httpRequest.response.headers.set(
+                'Access-Control-Allow-Headers',
+                requestHeaders,
+              );
+            }
+          }
+
+          function.handler(httpRequest);
+          handled = true;
+        }
+
+         */
+      }
+    } catch (e) {
+      try {
+        request.response.statusCode = 500;
+      } catch (_) {}
+      try {
+        request.response.write('Error: $e');
+      } catch (_) {}
+      try {
+        await request.response.close();
+      } catch (_) {
+        // Already closed, or the client is gone.
+      }
+    }
+  }
+}
+
+/// The path an `onAdminSdkRequest` handler gets for the request [path]
+/// (`/<name>[/<rest>]`): `/<rest>`, or `/` without one, as the native runtime
+/// gives it (the function name and a trailing `/` removed).
+String _handlerPath(String path) {
+  var normalPath = path;
+  if (normalPath.startsWith('/')) {
+    normalPath = normalPath.substring(1);
+  }
+  if (normalPath.endsWith('/')) {
+    normalPath = normalPath.substring(0, normalPath.length - 1);
+  }
+  var rest = normalPath.split('/').skip(1).join('/');
+  return rest.isEmpty ? '/' : '/$rest';
 }
 
 Future<void> _sendInternalError(HttpRequest request, Object e) async {
