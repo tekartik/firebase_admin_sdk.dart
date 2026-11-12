@@ -56,8 +56,12 @@ package (see the `tekartik-firebase-functions-admin-sdk-test-functions` skill).
   handlers use (`newAuthServiceLocal().auth(app)`,
   `newFirestoreServiceMemory().firestore(app)`). `declarer` is the
   `TekartikFirebaseFunctionsAdminSdkHttpRunner` that registers the functions
-  (`declareRunner`). `server` exposes the underlying `HttpServer`. Here
-  `enqueueTask` and `publishMessage` post directly on the local server.
+  (`declareRunner`). The server listens on any free port (read
+  `httpsUri(...)` or `server.port`, never assume 4999); the first `setUpAll`
+  starts it with a new `client`, the last `tearDownAll` closes both (a later
+  `setUpAll` starts them again, `client` throws in between). `server` exposes
+  the underlying `HttpServer`. Here `enqueueTask` and `publishMessage` post
+  directly on the local server.
 
 * `FirebaseFunctionsAdminSdkEmulatorTestContext({required emulatorOptions,
   region})` starts the firebase emulator from the current directory
@@ -65,7 +69,12 @@ package (see the `tekartik-firebase-functions-admin-sdk-test-functions` skill).
   root as working directory. Base url is
   `http://localhost:5001/<projectId>/<region>`, `region` defaulting to
   `regionUsCentral1`. Enable each emulator the functions need
-  (`onlyFunctions`, `onlyAuth`, `onlyFirestore`, `onlyPubsub`). `enqueueTask`
+  (`onlyFunctions`, `onlyAuth`, `onlyFirestore`, `onlyPubsub`; there is no
+  Cloud Tasks option). The functions run with the machine's credentials: give
+  `emulatorOptions` a `demo-` `projectId`, so that a service whose emulator is
+  not started fails instead of reaching a real project (the example below,
+  like this package's own `emulator_test.dart`, takes the `.firebaserc`
+  project: only for a project you mean to use). `enqueueTask`
   and `publishMessage` go through the deployed **test call function**, because
   only the function has admin credentials. `signInInfo` throws
   `UnimplementedError` on this context and on the deployed one.

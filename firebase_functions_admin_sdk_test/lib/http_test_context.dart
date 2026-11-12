@@ -26,31 +26,42 @@ class FirebaseFunctionsAdminSdkHttpTestContext
 
   /// The Firebase functions admin SDK instance.
   late FirebaseFunctionsAdminSdkHttp functions;
+
+  /// Starts the server on the first call, on any free port (the uri is read
+  /// back from the server): a fixed one would fail when another server, or
+  /// another context, uses it.
   @override
   Future<void> setUpAll() async {
     if (_refCount++ == 0) {
       var service = FirebaseFunctionsServiceAdminSdkHttp(
         httpServerFactory: httpFactory.server,
+        port: 0,
       );
       await service.fireUp(app, (functions) async {
         this.functions = functions;
 
         await declarer(functions);
       });
+      _serverUri = httpServerGetUri(functions.httpServer);
+      _client = httpFactory.client.newClient();
     }
   }
 
+  /// Closes the client and the server on the last call; a later [setUpAll]
+  /// starts them again.
   @override
   Future<void> tearDownAll() async {
     if (--_refCount == 0) {
-      client.close();
+      _client?.close();
+      _client = null;
+      await functions.httpServer.close(force: true);
     }
   }
 
   /// Get the server
   HttpServer get server => functions.httpServer;
 
-  late final _serverUri = httpServerGetUri(functions.httpServer);
+  late Uri _serverUri;
 
   @override
   Uri httpsUri(String path) =>
@@ -104,8 +115,12 @@ class FirebaseFunctionsAdminSdkHttpTestContext
     }
   }
 
+  Client? _client;
+
+  /// The client of the current setup, closed by the last [tearDownAll].
   @override
-  late final client = httpFactory.client.newClient();
+  Client get client =>
+      _client ?? (throw StateError('setUpAll not called or torn down'));
 
   /// Creates an HTTP test context.
   FirebaseFunctionsAdminSdkHttpTestContext({
