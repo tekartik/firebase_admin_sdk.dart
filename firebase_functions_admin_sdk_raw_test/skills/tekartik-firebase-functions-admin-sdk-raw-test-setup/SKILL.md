@@ -23,8 +23,13 @@ adding emulator tests for Dart functions.
   - `firebase.json` — one `functions` entry with `"source": "functions"`,
     `"codebase": "default"`, `"runtime": "dart3"` and
     `"disallowLegacyRuntimeConfig": true`.
-  - `.firebaserc` — `{"projects": {"default": "<project-id>"}}`. The tests read
-    the id from it, never hardcode it.
+  - `.firebaserc` — `{"projects": {"default": "<project-id>"}}`. The test reads
+    the id from it. That is safe only because the function touches no other
+    service: a function using Firestore, Auth, Storage, Pub/Sub or Cloud
+    Tasks runs with a `demo-` project id (`FirebaseEmulatorOptions(projectId:
+    'demo-...')`) and the emulators of those services, or its admin sdk
+    calls reach the real project with the machine's application default
+    credentials.
   - `functions/` — its own pub package (`resolution: workspace`) depending on
     `firebase_functions` with `build_runner` in `dev_dependencies`, holding
     `bin/server.dart` and the generated `functions/functions.yaml`.
@@ -66,7 +71,9 @@ adding emulator tests for Dart functions.
 
 * Add `onlyFirestore`, `onlyAuth`, `onlyPubsub` or `onlyStorage` to
   `FirebaseEmulatorOptions` when the function needs those services; the
-  matching `emulators` ports must also be declared in `firebase.json`.
+  matching `emulators` ports must also be declared in `firebase.json`. There
+  is no Cloud Tasks option: on a real project id a task enqueue goes to the
+  real queue (one more reason for a `demo-` project id).
   `persistPath` keeps the emulator data between runs.
 
 * `tool/firebase_functions_raw_menu.dart` just calls `firebaseFunctionsMenuMain`
